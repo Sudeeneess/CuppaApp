@@ -1,0 +1,78 @@
+# ==================== BACKEND ====================
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+
+# ==================== FRONTEND ====================
+# Node.js
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# React Native
+.expo/
+dist/
+build/
+
+# React Native specific
+*.jks
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+
+# ==================== DATABASE ====================
+*.db
+*.sqlite
+*.h2.db
+
+# ==================== IDE ====================
+# STS
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# IntelliJ IDEA
+.idea
+*.iws
+*.iml
+*.ipr
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# VS Code
+.vscode/
+
+# ==================== SYSTEM ====================
+.DS_Store
+Thumbs.db
+
+# ==================== ENVIRONMENT ====================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+application-*.properties
+
+# ==================== LOGS ====================
+*.log
+logs/
