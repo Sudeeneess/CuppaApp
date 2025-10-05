@@ -21,7 +21,7 @@ export default function App() {
                 </Surface>
                 <Surface style={styles.container} elevation={2}>
                   <Button icon="camera" mode="contained">
-                    eshkere
+                    skibidi
                   </Button>
                 </Surface>
                 <Surface style={styles.container}>
