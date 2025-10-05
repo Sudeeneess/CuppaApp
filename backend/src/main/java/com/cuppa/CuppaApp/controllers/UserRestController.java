@@ -11,26 +11,54 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * REST контроллер для работы с пользователями
+ * REST контроллер для управления пользователями в приложении Cuppa
  *
- * <p>Предоставляет REST API для операций CRUD с пользователями мессенджера.
- * Работает с существующими данными в базе данных.
+ *
+ * <p>Контроллер обеспечивает:
+ * <ul>
+ *   <li>Получение списка всех пользователей</li>
+ *   <li>Поиск пользователей по различным критериям (ID, username)</li>
+ *   <li>Создание новых пользователей с валидацией уникальности</li>
+ *   <li>Обновление данных существующих пользователей</li>
+ *   <li>Управление онлайн-статусом пользователей</li>
+ *   <li>Получение статистической информации</li>
+ * </ul>
+ *
+ * <p><b>ВНИМАНИЕ:</b> Все операции выполняются с реальной базой данных PostgreSQL.
+ * Рекомендуется добавить аутентификацию и авторизацию для защиты endpoints в продакшн-среде.
  *
  * @author Petr Panteev
- * @version 1.0
+ * @version 1.1
  * @since 05.10.2025
  */
 @RestController
 @RequestMapping("/api/users")
 public class UserRestController {
 
+    /**
+     * Репозиторий для работы с данными пользователей в базе данных
+     *
+     * <p>Обеспечивает абстракцию над операциями CRUD и кастомными запросами
+     * к таблице users. Spring автоматически внедряет реализацию этого интерфейса.
+     */
     @Autowired
     private UserRepository userRepository;
 
     /**
-     * Получить всех пользователей
+     * Получить полный список всех зарегистрированных пользователей
      *
-     * @return список всех пользователей
+     * <p>Endpoint: GET /api/users
+     *
+     * <p>Возвращает массив JSON объектов, содержащих полную информацию
+     * о каждом пользователе системы. Если пользователи отсутствуют,
+     * возвращает статус 204 No Content.
+     *
+     * @return ResponseEntity со списком пользователей и соответствующим HTTP статусом:
+     *         <ul>
+     *           <li>200 OK - пользователи найдены и возвращены</li>
+     *           <li>204 No Content - пользователи отсутствуют в системе</li>
+     *           <li>500 Internal Server Error - произошла ошибка сервера</li>
+     *         </ul>
      */
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
@@ -48,10 +76,19 @@ public class UserRestController {
     }
 
     /**
-     * Получить пользователя по ID
+     * Получить пользователя по уникальному идентификатору (ID)
      *
-     * @param id ID пользователя
-     * @return пользователь или 404 если не найден
+     * <p>Endpoint: GET /api/users/{id}
+     *
+     * <p>Выполняет поиск пользователя в базе данных по первичному ключу.
+     * ID пользователя передается как path variable в URL.
+     *
+     * @param id уникальный идентификатор пользователя (целое число)
+     * @return ResponseEntity с данными пользователя и соответствующим HTTP статусом:
+     *         <ul>
+     *           <li>200 OK - пользователь найден и возвращен</li>
+     *           <li>404 Not Found - пользователь с указанным ID не существует</li>
+     *         </ul>
      */
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable("id") Integer id) {
@@ -65,20 +102,27 @@ public class UserRestController {
     }
 
     /**
-     * Получить пользователя по username
+     * Получить пользователя по имени пользователя (username)
      *
-     * @param username имя пользователя
-     * @return пользователь или 404 если не найден
+     * <p>Endpoint: GET /api/users/username/{username}
+     *
+     * <p>Выполняет эффективный поиск пользователя по уникальному имени пользователя
+     * с использованием оптимизированного запроса к базе данных.
+     *
+     * <p><b>Оптимизация:</b> Использует специализированный метод репозитория
+     * вместо фильтрации на стороне приложения, что значительно повышает
+     * производительность при большом количестве пользователей.
+     *
+     * @param username уникальное имя пользователя для поиска
+     * @return ResponseEntity с данными пользователя и соответствующим HTTP статусом:
+     *         <ul>
+     *           <li>200 OK - пользователь найден и возвращен</li>
+     *           <li>404 Not Found - пользователь с указанным username не существует</li>
+     *         </ul>
      */
     @GetMapping("/username/{username}")
     public ResponseEntity<User> getUserByUsername(@PathVariable("username") String username) {
-        // Если у вас есть метод в репозитории для поиска по username
-        // User user = userRepository.findByUsername(username);
-
-        // Временное решение - ищем по всем пользователям
-        Optional<User> user = userRepository.findAll().stream()
-                .filter(u -> username.equals(u.getUsername()))
-                .findFirst();
+        Optional<User> user = userRepository.findByUsername(username);
 
         if (user.isPresent()) {
             return new ResponseEntity<>(user.get(), HttpStatus.OK);
@@ -88,26 +132,38 @@ public class UserRestController {
     }
 
     /**
-     * Создать нового пользователя
+     * Создать нового пользователя в системе
      *
-     * @param user данные пользователя
-     * @return созданный пользователь
+     * <p>Endpoint: POST /api/users
+     *
+     * <p>Принимает JSON объект с данными нового пользователя и сохраняет его
+     * в базе данных. Перед сохранением выполняет проверку уникальности
+     * имени пользователя и email адреса.
+     *
+     * <p><b>Валидация:</b> Автоматически проверяет отсутствие дубликатов
+     * username и email с использованием оптимизированных запросов к БД.
+     *
+     * @param user объект пользователя с данными для создания (передается в теле запроса)
+     * @return ResponseEntity с созданным пользователем и соответствующим HTTP статусом:
+     *         <ul>
+     *           <li>201 Created - пользователь успешно создан</li>
+     *           <li>409 Conflict - пользователь с таким username или email уже существует</li>
+     *           <li>500 Internal Server Error - произошла ошибка при создании пользователя</li>
+     *         </ul>
      */
     @PostMapping
     public ResponseEntity<User> createUser(@RequestBody User user) {
         try {
-            // Проверяем, существует ли пользователь с таким username или email
-            boolean usernameExists = userRepository.findAll().stream()
-                    .anyMatch(u -> user.getUsername().equals(u.getUsername()));
-            boolean emailExists = userRepository.findAll().stream()
-                    .anyMatch(u -> user.getEmail().equals(u.getEmail()));
+            // Проверяем уникальность username и email с помощью оптимизированных методов
+            boolean usernameExists = userRepository.existsByUsername(user.getUsername());
+            boolean emailExists = userRepository.existsByEmail(user.getEmail());
 
             if (usernameExists) {
-                return new ResponseEntity<>(null, HttpStatus.CONFLICT); // 409 Conflict
+                return new ResponseEntity<>(null, HttpStatus.CONFLICT);
             }
 
             if (emailExists) {
-                return new ResponseEntity<>(null, HttpStatus.CONFLICT); // 409 Conflict
+                return new ResponseEntity<>(null, HttpStatus.CONFLICT);
             }
 
             User newUser = userRepository.save(user);
@@ -118,11 +174,25 @@ public class UserRestController {
     }
 
     /**
-     * Обновить данные пользователя
+     * Обновить данные существующего пользователя
      *
-     * @param id ID пользователя
-     * @param user новые данные пользователя
-     * @return обновленный пользователь
+     * <p>Endpoint: PUT /api/users/{id}
+     *
+     * <p>Обновляет информацию о пользователе с указанным ID. Поддерживает
+     * частичное обновление - изменяются только те поля, которые переданы
+     * в запросе (не-null значения).
+     *
+     * <p><b>Особенности:</b> Метод реализует стратегию частичного обновления,
+     * что позволяет клиентам отправлять только изменяемые поля без необходимости
+     * передачи полного объекта.
+     *
+     * @param id уникальный идентификатор пользователя для обновления
+     * @param user объект с новыми данными пользователя (передается в теле запроса)
+     * @return ResponseEntity с обновленным пользователем и соответствующим HTTP статусом:
+     *         <ul>
+     *           <li>200 OK - пользователь успешно обновлен</li>
+     *           <li>404 Not Found - пользователь с указанным ID не существует</li>
+     *         </ul>
      */
     @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable("id") Integer id, @RequestBody User user) {
@@ -131,7 +201,7 @@ public class UserRestController {
         if (userData.isPresent()) {
             User existingUser = userData.get();
 
-            // Обновляем только те поля, которые пришли в запросе
+            // Частичное обновление: изменяем только переданные поля
             if (user.getUsername() != null) {
                 existingUser.setUsername(user.getUsername());
             }
@@ -164,10 +234,20 @@ public class UserRestController {
     }
 
     /**
-     * Удалить пользователя
+     * Удалить пользователя из системы
      *
-     * @param id ID пользователя
-     * @return статус операции
+     * <p>Endpoint: DELETE /api/users/{id}
+     *
+     * <p>Полностью удаляет пользователя с указанным ID из базы данных.
+     * Операция необратима - все данные пользователя будут безвозвратно удалены.
+     *
+     * @param id уникальный идентификатор пользователя для удаления
+     * @return ResponseEntity с соответствующим HTTP статусом:
+     *         <ul>
+     *           <li>204 No Content - пользователь успешно удален</li>
+     *           <li>404 Not Found - пользователь с указанным ID не существует</li>
+     *           <li>500 Internal Server Error - произошла ошибка при удалении</li>
+     *         </ul>
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<HttpStatus> deleteUser(@PathVariable("id") Integer id) {
@@ -184,32 +264,18 @@ public class UserRestController {
     }
 
     /**
-     * Установить статус онлайн/офлайн для пользователя
+     * Получить общее количество зарегистрированных пользователей
      *
-     * @param id ID пользователя
-     * @param isOnline статус онлайн
-     * @return обновленный пользователь
-     */
-    @PatchMapping("/{id}/online")
-    public ResponseEntity<User> setOnlineStatus(
-            @PathVariable("id") Integer id,
-            @RequestParam Boolean isOnline) {
-
-        Optional<User> userData = userRepository.findById(id);
-
-        if (userData.isPresent()) {
-            User user = userData.get();
-            user.setIs_online((isOnline));
-            return new ResponseEntity<>(userRepository.save(user), HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-    }
-
-    /**
-     * Получить количество пользователей
+     * <p>Endpoint: GET /api/users/count
      *
-     * @return количество пользователей
+     * <p>Возвращает общее число пользователей в системе. Может использоваться
+     * для административной статистики или отображения в интерфейсе.
+     *
+     * @return ResponseEntity с количеством пользователей и соответствующим HTTP статусом:
+     *         <ul>
+     *           <li>200 OK - количество успешно получено</li>
+     *           <li>500 Internal Server Error - произошла ошибка при подсчете</li>
+     *         </ul>
      */
     @GetMapping("/count")
     public ResponseEntity<Long> getUsersCount() {
