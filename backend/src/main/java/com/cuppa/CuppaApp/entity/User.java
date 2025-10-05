@@ -5,7 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Data;
-import lombok.Getter;
+import java.time.LocalDateTime;
 
 /**
  * Сущность пользователя (User) для приложения Cuppa
@@ -104,7 +104,7 @@ public class User {
      * Ожидаемые значения: "true"/"false" или "online"/"offline".
      */
     @Column
-    private String is_online;
+    private Boolean is_online;
 
     /**
      * Время последней активности пользователя
@@ -114,7 +114,7 @@ public class User {
      * Содержит timestamp последнего действия пользователя в системе.
      */
     @Column
-    private String last_seen;
+    private LocalDateTime last_seen;
 
     /**
      * Дата и время создания учетной записи
@@ -124,7 +124,7 @@ public class User {
      * Устанавливается автоматически при создании пользователя.
      */
     @Column
-    private String created_at;
+    private LocalDateTime created_at;
 
     /**
      * Дата и время последнего обновления данных пользователя
@@ -134,5 +134,5 @@ public class User {
      * Обновляется при каждом изменении данных пользователя.
      */
     @Column
-    private String updated_at;
+    private LocalDateTime updated_at;
 }
