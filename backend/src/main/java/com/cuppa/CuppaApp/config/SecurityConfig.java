@@ -1,59 +1,50 @@
 package com.cuppa.CuppaApp.config;
 
+import com.cuppa.CuppaApp.security.JwtAuthenticationFilter;
+import com.cuppa.CuppaApp.security.JwtTokenProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/**
- * Конфигурация безопасности Spring Security для приложения Cuppa
- *
- * <p>На начальном этапе разработки предоставляет временную заглушку безопасности,
- * отключающую все проверки аутентификации и авторизации.
- *
- * <p><b>ПЛАН РАЗРАБОТКИ:</b>
- * <ol>
- *   <li>Текущая версия: полный доступ для всех запросов</li>
- *   <li>Следующая версия: JWT аутентификация для защищенных эндпоинтов</li>
- *   <li>Финальная версия: ролевая модель + CSRF защита для веб-интерфейса</li>
- * </ol>
- *
- * @author Walerya Pleskova
- * @version 1.0
- * @since 05.10.2025
- * @see <a href="https://docs.spring.io/spring-security/reference/index.html">
- * Spring Security Documentation</a>
- */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    /**
-     * Настраивает цепочку фильтров безопасности для HTTP запросов
-     *
-     * <p>Временная конфигурация обеспечивает:
-     * <ul>
-     *   <li>Отключение CSRF защиты (не требуется для REST API)</li>
-     *   <li>Разрешение всех запросов без аутентификации</li>
-     *   <li>Отключение базовой HTTP аутентификации</li>
-     * </ul>
-     *
-     * <p><b>Примечание:</b> Временная конфигурация будет заменена на полноценную
-     * систему аутентификации с JWT токенами на следующем этапе разработки.
-     *
-     * @param http объект для настройки web безопасности
-     * @return сконфигурированная цепочка фильтров безопасности
-     * @throws Exception если произошла ошибка конфигурации
-     */
+    private final JwtTokenProvider jwtTokenProvider;
+
+    public SecurityConfig(JwtTokenProvider jwtTokenProvider) {
+        this.jwtTokenProvider = jwtTokenProvider;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable)  // отключаем CSRF
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()  // разрешаем ВСЕ запросы без авторизации
-                );
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/**").authenticated() // Разрешаем все /api с аутентификацией
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
