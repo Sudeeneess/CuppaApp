@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  * (например, boolean для is_online, timestamp для дат).
  * Рекомендуется использовать соответствующие Java-типы в будущих версиях.
  *
- * @author Walerya Pleskova
+ * @author Petr Panteev
  * @version 1.0
  * @since 05.10.2025
  */
