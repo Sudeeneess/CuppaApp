@@ -1,0 +1,14 @@
+{
+  "name": "cuppa",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.ts",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "",
+  "license": "",
+  "devDependencies": {
+    "electron": "^23.1.3"
+  }
+}
