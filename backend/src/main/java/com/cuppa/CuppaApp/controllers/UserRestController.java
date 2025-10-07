@@ -32,7 +32,7 @@ import java.util.Optional;
  * @since 05.10.2025
  */
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/admin/users")
 public class UserRestController {
 
     /**
