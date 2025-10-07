@@ -1,4 +1,5 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, screen } from "electron";
+import * as path from "path";
 
 let mainWindow: BrowserWindow | null;
 
@@ -15,28 +16,16 @@ function createWindow() {
       // Включает Node.js API в Renderer Process (если это необходимо)
       // В современных приложениях рекомендуется использовать Context Isolation
       // для повышения безопасности.
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
 
       // Путь к preload-скрипту, если вы используете изоляцию контекста
       // preload: path.join(__dirname, 'preload.js'),
     },
   });
 
-  // 2. Загружаем ваш контент
-
-  // В разработке: загружаем адрес, который выдает ваш Webpack Dev Server (например, Expo Web)
-  const isDev = process.env.NODE_ENV === "development";
-
-  if (isDev) {
-    // В режиме разработки Expo или Webpack Dev Server
-    // Убедитесь, что этот порт совпадает с вашим веб-сборщиком
-    mainWindow.loadURL("http://localhost:8081");
-    mainWindow.webContents.openDevTools(); // Открываем DevTools для удобства
-  } else {
-    // В продакшене: загружаем скомпилированный HTML-файл
-    mainWindow.loadFile("index.html");
-  }
+  mainWindow.loadURL("http://localhost:8081");
+  mainWindow.webContents.openDevTools(); // Открываем DevTools для удобства
 
   // 3. Обработка закрытия окна
   mainWindow.on("closed", () => {
