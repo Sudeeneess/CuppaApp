@@ -281,7 +281,7 @@ Last Seen: ${new Date(data.last_seen).toLocaleString()}`, 'success');
         try {
             showResult('Fetching all users...', 'info');
 
-            const response = await fetch('/api/users', {
+            const response = await fetch('/api/admin/users', {
                 headers: {
                     'Content-Type': 'application/json'
                 }
