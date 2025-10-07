@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuppa Messenger API Test</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 40px;
+            line-height: 1.6;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        h3 {
+            color: #555;
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        input {
+            margin: 8px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 200px;
+            display: block;
+        }
+        button {
+            margin: 10px 5px 10px 0;
+            padding: 10px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+            transition: all 0.2s;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #28a745;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #dc3545;
+        }
+        .info {
+            color: #17a2b8;
+            background: #d1ecf1;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #17a2b8;
+        }
+        #result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            min-height: 100px;
+            border: 1px solid #e9ecef;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .token-display {
+            background: #e9ecef;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>☕ Cuppa Messenger API Test</h1>
+
+    <div class="section">
+        <h3>1. User Registration</h3>
+        <input type="text" id="regUsername" placeholder="Username" value="testuser2">
+        <input type="email" id="regEmail" placeholder="Email" value="test2@example.com">
+        <input type="password" id="regPassword" placeholder="Password" value="password123">
+        <button onclick="register()">Register User</button>
+    </div>
+
+    <div class="section">
+        <h3>2. User Login</h3>
+        <input type="email" id="loginEmail" placeholder="Email" value="bob@example.com">
+        <input type="password" id="loginPassword" placeholder="Password" value="password123">
+        <button onclick="login()">Login</button>
+    </div>
+
+    <div class="section">
+        <h3>3. Protected Endpoints (Requires Token)</h3>
+        <button onclick="getProfile()">Get My Profile</button>
+        <button onclick="getAllUsers()">Get All Users</button>
+        <button onclick="clearToken()">Clear Token</button>
+
+        <div id="tokenInfo" class="token-display" style="display: none;">
+            <strong>Current Token:</strong> <span id="tokenPreview"></span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Test Results:</h3>
+        <div id="result">
+            <div class="info">Ready for testing!<br>1. First register or login<br>2. Then test protected endpoints</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentToken = '';
+
+    function updateTokenDisplay() {
+        const tokenInfo = document.getElementById('tokenInfo');
+        const tokenPreview = document.getElementById('tokenPreview');
+
+        if (currentToken) {
+            tokenInfo.style.display = 'block';
+            tokenPreview.textContent = currentToken.substring(0, 50) + '...';
+        } else {
+            tokenInfo.style.display = 'none';
+        }
+    }
+
+    function showResult(message, type = 'info') {
+        const result = document.getElementById('result');
+        const timestamp = new Date().toLocaleTimeString();
+        const messageDiv = document.createElement('div');
+        messageDiv.className = type;
+        messageDiv.innerHTML = `<strong>[${timestamp}]</strong><br>${message}`;
+        result.insertBefore(messageDiv, result.firstChild);
+    }
+
+    async function register() {
+        const username = document.getElementById('regUsername').value;
+        const email = document.getElementById('regEmail').value;
+        const password = document.getElementById('regPassword').value;
+
+        if (!username || !email || !password) {
+            showResult('Please fill all fields', 'error');
+            return;
+        }
+
+        try {
+            showResult('Sending registration request...', 'info');
+
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username,
+                    email,
+                    password,
+                    first_name: 'Test',
+                    last_name: 'User'
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                currentToken = data.accessToken;
+                updateTokenDisplay();
+                showResult(`✅ REGISTRATION SUCCESSFUL!<br>
+User ID: ${data.userId}<br>
+Username: ${data.username}<br>
+Email: ${data.email}<br>
+Token received and stored`, 'success');
+            } else {
+                showResult(`❌ Registration failed: ${JSON.stringify(data)}`, 'error');
+            }
+        } catch (error) {
+            showResult(`❌ Error: ${error.message}`, 'error');
+        }
+    }
+
+    async function login() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+
+        if (!email || !password) {
+            showResult('Please enter email and password', 'error');
+            return;
+        }
+
+        try {
+            showResult('Sending login request...', 'info');
+
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                currentToken = data.accessToken;
+                updateTokenDisplay();
+                showResult(`✅ LOGIN SUCCESSFUL!<br>
+Welcome ${data.username}!<br>
+Token received and stored`, 'success');
+            } else {
+                showResult(`❌ Login failed: ${JSON.stringify(data)}`, 'error');
+            }
+        } catch (error) {
+            showResult(`❌ Error: ${error.message}`, 'error');
+        }
+    }
+
+    async function getProfile() {
+        if (!currentToken) {
+            showResult('Please login first to get a token', 'error');
+            return;
+        }
+
+        try {
+            showResult('Requesting user profile...', 'info');
+
+            const response = await fetch('/api/users/me', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + currentToken,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+            }
+
+            const data = await response.json();
+            showResult(`✅ PROFILE RETRIEVED!<br>
+ID: ${data.id}<br>
+Username: ${data.username}<br>
+Email: ${data.email}<br>
+Online: ${data.is_online}<br>
+Last Seen: ${new Date(data.last_seen).toLocaleString()}`, 'success');
+
+        } catch (error) {
+            showResult(`❌ Error getting profile: ${error.message}`, 'error');
+        }
+    }
+
+    async function getAllUsers() {
+        try {
+            showResult('Fetching all users...', 'info');
+
+            const response = await fetch('/api/users', {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            showResult(`📊 ALL USERS (${data.length} total):<br>${JSON.stringify(data, null, 2)}`, 'success');
+        } catch (error) {
+            showResult(`❌ Error getting users: ${error.message}`, 'error');
+        }
+    }
+
+    function clearToken() {
+        currentToken = '';
+        updateTokenDisplay();
+        showResult('Token cleared. Please login again to access protected endpoints.', 'info');
+    }
+
+    // Initialize
+    updateTokenDisplay();
+</script>
+</body>
+</html>

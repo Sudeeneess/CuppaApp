@@ -7,6 +7,7 @@ import com.cuppa.CuppaApp.repository.UserRepository;
 import com.cuppa.CuppaApp.security.JwtTokenProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDateTime;
 
 /**
@@ -26,7 +27,7 @@ import java.time.LocalDateTime;
  *
  * @author Walerya Pleskova
  * @version 1.0
- * @since 2025-10-06
+ * @since 2025-10-07
  */
 @Service
 public class AuthService {
@@ -86,7 +87,7 @@ public class AuthService {
         user.setUpdated_at(LocalDateTime.now());
 
         User savedUser = userRepository.save(user);
-        String token = jwtTokenProvider.generateToken(savedUser.getUsername());
+        String token = jwtTokenProvider.generateToken(savedUser.getEmail());
 
         return new AuthResponse(token, savedUser.getId(), savedUser.getUsername(), savedUser.getEmail());
     }
@@ -121,7 +122,7 @@ public class AuthService {
         user.setLast_seen(LocalDateTime.now());
         userRepository.save(user);
 
-        String token = jwtTokenProvider.generateToken(user.getUsername());
+        String token = jwtTokenProvider.generateToken(user.getEmail());
         return new AuthResponse(token, user.getId(), user.getUsername(), user.getEmail());
     }
 }

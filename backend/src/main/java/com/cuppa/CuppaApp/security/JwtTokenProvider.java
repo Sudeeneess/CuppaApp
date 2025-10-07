@@ -59,16 +59,16 @@ public class JwtTokenProvider {
      * </ul>
      * </p>
      *
-     * @param username имя пользователя для которого генерируется токен
+     * @param email имя пользователя для которого генерируется токен
      * @return JWT-токен в виде строки
      * @throws IllegalArgumentException если имя пользователя пустое или null
      */
-    public String generateToken(String username) {
+    public String generateToken(String email) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
 
         return Jwts.builder()
-                .setSubject(username)
+                .setSubject(email)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(getSigningKey(), SignatureAlgorithm.HS512)
@@ -87,7 +87,7 @@ public class JwtTokenProvider {
      * @throws IllegalArgumentException если токен пустой или null
      * @see #validateToken(String)
      */
-    public String getUsernameFromToken(String token) {
+    public String getEmailFromToken(String token) {
         Claims claims = Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()
