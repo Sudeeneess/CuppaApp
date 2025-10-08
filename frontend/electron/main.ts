@@ -1,5 +1,5 @@
-import { app, BrowserWindow, screen } from "electron";
-import * as path from "path";
+import { app, BrowserWindow } from "electron";
+import isDev from "electron-is-dev";
 
 let mainWindow: BrowserWindow | null;
 
@@ -24,8 +24,19 @@ function createWindow() {
     },
   });
 
-  mainWindow.loadURL("http://localhost:8081");
-  mainWindow.webContents.openDevTools(); // Открываем DevTools для удобства
+  // 2. Загружаем ваш контент
+
+  // В разработке: загружаем адрес, который выдает ваш Webpack Dev Server (например, Expo Web)
+
+  if (isDev) {
+    // В режиме разработки Expo или Webpack Dev Server
+    // Убедитесь, что этот порт совпадает с вашим веб-сборщиком
+    mainWindow.loadURL("http://localhost:8081");
+    mainWindow.webContents.openDevTools(); // Открываем DevTools для удобства
+  } else {
+    // В продакшене: загружаем скомпилированный HTML-файл
+    mainWindow.loadFile("index.html");
+  }
 
   // 3. Обработка закрытия окна
   mainWindow.on("closed", () => {
