@@ -1,5 +1,13 @@
 import { Stack } from "expo-router";
+import { PaperProvider } from "react-native-paper";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
-  return <Stack screenOptions={{}} />;
+  return (
+    <SafeAreaProvider>
+      <PaperProvider>
+        <Stack screenOptions={{}} />
+      </PaperProvider>
+    </SafeAreaProvider>
+  );
 }

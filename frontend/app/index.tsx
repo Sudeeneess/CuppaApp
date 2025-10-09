@@ -1,23 +1,32 @@
+import React from "react";
 import { Link, Stack } from "expo-router";
-import { View, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
+import { Surface, Text } from "react-native-paper";
 
 export default function Index() {
   return (
-    <View style={styles.container}>
-      <Stack.Screen />
+    <Surface style={styles.background}>
+      <Stack.Screen options={{ headerShown: false }} />
       <Link
         href={{
-          pathname: "./sign-in",
+          pathname: "./auth",
         }}
       >
-        Go to Log-in
+        <Text> Go to Auth (if not authenticated) </Text>
       </Link>
-    </View>
+      <Link
+        href={{
+          pathname: "./home",
+        }}
+      >
+        <Text>Go to Home (for authenticated users) </Text>
+      </Link>
+    </Surface>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
