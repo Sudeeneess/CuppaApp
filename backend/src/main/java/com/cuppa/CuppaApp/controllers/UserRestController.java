@@ -208,23 +208,23 @@ public class UserRestController {
             if (user.getEmail() != null) {
                 existingUser.setEmail(user.getEmail());
             }
-            if (user.getFirst_name() != null) {
-                existingUser.setFirst_name(user.getFirst_name());
+            if (user.getFirstName() != null) {
+                existingUser.setFirstName(user.getFirstName());
             }
-            if (user.getLast_name() != null) {
-                existingUser.setLast_name(user.getLast_name());
+            if (user.getLastName() != null) {
+                existingUser.setLastName(user.getLastName());
             }
-            if (user.getAvatar_url() != null) {
-                existingUser.setAvatar_url(user.getAvatar_url());
+            if (user.getAvatarUrl() != null) {
+                existingUser.setAvatarUrl(user.getAvatarUrl());
             }
             if (user.getPhone() != null) {
                 existingUser.setPhone(user.getPhone());
             }
-            if (user.getIs_online() != null) {
-                existingUser.setIs_online(user.getIs_online());
+            if (user.getIsOnline() != null) {
+                existingUser.setIsOnline(user.getIsOnline());
             }
-            if (user.getLast_seen() != null) {
-                existingUser.setLast_seen(user.getLast_seen());
+            if (user.getLastSeen() != null) {
+                existingUser.setLastSeen(user.getLastSeen());
             }
 
             return new ResponseEntity<>(userRepository.save(existingUser), HttpStatus.OK);
