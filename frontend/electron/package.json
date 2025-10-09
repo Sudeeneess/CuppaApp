@@ -1,0 +1,19 @@
+{
+  "name": "cuppa",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.ts",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "",
+  "devDependencies": {
+    "electron": "^38.2.2"
+  },
+  "dependencies": {
+    "electron-is-dev": "^3.0.1"
+  }
+}
