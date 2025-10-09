@@ -69,10 +69,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jwt = getJwtFromRequest(request);
 
             if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
-                String username = jwtTokenProvider.getUsernameFromToken(jwt);
+                String email = jwtTokenProvider.getEmailFromToken(jwt);  // 👈 ИЗМЕНИТЬ
 
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(username, null, null);
+                        new UsernamePasswordAuthenticationToken(email, null, null);  // 👈 ИСПОЛЬЗУЕМ EMAIL
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -90,7 +90,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * <p>Ожидает токен в формате: {@code Bearer {jwt-token}}</p>
      *
      * @param request HTTP-запрос
-     * @return JWT-токен без префикса "Bearer " или null если токен отсутствует или невалиден
+     * @return JWT-токен без префикса "Bearer" или null если токен отсутствует или невалиден
      */
     private String getJwtFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");

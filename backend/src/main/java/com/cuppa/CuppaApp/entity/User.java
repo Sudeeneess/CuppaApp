@@ -61,7 +61,7 @@ public class User {
      * Должен содержать только хеш, полученный с помощью надежного алгоритма
      * хеширования (bcrypt, argon2 и т.д.).
      */
-    @Column
+    @Column(length = 255) // или больше
     private String password_hash;
 
     /**
