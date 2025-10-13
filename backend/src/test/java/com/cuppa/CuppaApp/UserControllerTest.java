@@ -210,10 +210,10 @@ public class UserControllerTest {
         User newUser = new User();
         newUser.setUsername("test_user_" + System.currentTimeMillis());
         newUser.setEmail("test_" + System.currentTimeMillis() + "@example.com");
-        newUser.setPassword_hash("test_hash");
-        newUser.setFirst_name("Test");
-        newUser.setLast_name("User");
-        newUser.setIs_online(true);
+        newUser.setPasswordHash("test_hash");
+        newUser.setFirstName("Test");
+        newUser.setLastName("User");
+        newUser.setIsOnline(true);
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -253,15 +253,15 @@ public class UserControllerTest {
         User testUser = new User();
         testUser.setUsername("update_test_" + System.currentTimeMillis());
         testUser.setEmail("update_test_" + System.currentTimeMillis() + "@example.com");
-        testUser.setPassword_hash("hash");
-        testUser.setFirst_name("OldName");
+        testUser.setPasswordHash("hash");
+        testUser.setFirstName("OldName");
 
         User savedUser = userRepository.save(testUser);
 
         // Обновляем его
         User updateData = new User();
-        updateData.setFirst_name("NewName");
-        updateData.setIs_online(false);
+        updateData.setFirstName("NewName");
+        updateData.setIsOnline(false);
 
         mockMvc.perform(put("/api/users/" + savedUser.getId())
                         .contentType(MediaType.APPLICATION_JSON)
