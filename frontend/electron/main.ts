@@ -9,8 +9,8 @@ function createWindow() {
     // Опции окна
     width: 1200,
     height: 800,
-    minWidth: 800,
-    minHeight: 600,
+    minWidth: 400,
+    minHeight: 700,
     webPreferences: {
       // Ключевой параметр для безопасности:
       // Включает Node.js API в Renderer Process (если это необходимо)

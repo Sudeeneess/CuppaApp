@@ -4,7 +4,7 @@ import { View, StyleSheet } from "react-native";
 export default function Index() {
   return (
     <View style={styles.container}>
-      <Stack.Screen />
+      <Stack.Screen options={{ headerShown: false }} />
       <Link
         href={{
           pathname: "./chat",
