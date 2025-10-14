@@ -1,11 +1,10 @@
 import React from "react";
 import { Stack } from "expo-router";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet, Text, ScrollView, View } from "react-native";
 import { Surface, SegmentedButtons } from "react-native-paper";
-import { SignInForm } from "../components/sign-in-form";
-import { SignUpForm } from "../components/sign-up-form";
-import { useIsWide } from "../hooks/use-is-wide";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SignInForm } from "../../components/sign-in-form";
+import { SignUpForm } from "../../components/sign-up-form";
+import { useIsWide } from "../../hooks/use-is-wide";
 
 export default function Auth() {
   const isWide = useIsWide();
@@ -16,6 +15,7 @@ export default function Auth() {
   return (
     <Surface style={styles.background}>
       <Stack.Screen options={{ headerShown: false }} />
+
       <Surface
         elevation={2}
         style={[
@@ -27,7 +27,7 @@ export default function Auth() {
           },
         ]}
       >
-        <SafeAreaView style={styles.contentContainer}>
+        <ScrollView contentContainerStyle={styles.contentContainer}>
           <Text style={styles.content}> logotip.mp3 </Text>
           <SegmentedButtons
             value={authMode}
@@ -38,8 +38,10 @@ export default function Auth() {
             ]}
             style={styles.content}
           />
-          {authMode === "signIn" ? <SignInForm /> : <SignUpForm />}
-        </SafeAreaView>
+          <View style={styles.content}>
+            {authMode === "signIn" ? <SignInForm /> : <SignUpForm />}
+          </View>
+        </ScrollView>
       </Surface>
     </Surface>
   );
@@ -54,18 +56,18 @@ const styles = StyleSheet.create({
   surface: {
     width: 544,
     height: "auto",
-    alignItems: "center",
+    maxHeight: "100%",
+    alignItems: "stretch",
     justifyContent: "center",
   },
   contentContainer: {
-    width: "80%",
+    minHeight: "100%",
+    paddingTop: 48,
+    justifyContent: "center",
     alignItems: "center",
-    justifyContent: "flex-start",
-    paddingTop: 64,
-    paddingBottom: 256,
   },
   content: {
-    width: "100%",
+    width: "80%",
     marginBottom: 32,
   },
 });

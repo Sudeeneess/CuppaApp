@@ -9,14 +9,14 @@ export default function Index() {
       <Stack.Screen options={{ headerShown: false }} />
       <Link
         href={{
-          pathname: "./auth",
+          pathname: "./(auth)/",
         }}
       >
         <Text> Go to Auth (if not authenticated) </Text>
       </Link>
       <Link
         href={{
-          pathname: "./home",
+          pathname: "./(app)/",
         }}
       >
         <Text>Go to Home (for authenticated users) </Text>
