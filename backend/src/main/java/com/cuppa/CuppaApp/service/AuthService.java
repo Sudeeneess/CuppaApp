@@ -78,13 +78,13 @@ public class AuthService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
-        user.setPassword_hash(passwordEncoder.encode(request.getPassword()));
-        user.setFirst_name(request.getFirst_name());
-        user.setLast_name(request.getLast_name());
-        user.setIs_online(false);
-        user.setLast_seen(LocalDateTime.now());
-        user.setCreated_at(LocalDateTime.now());
-        user.setUpdated_at(LocalDateTime.now());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setFirstName(request.getFirst_name());
+        user.setLastName(request.getLast_name());
+        user.setIsOnline(false);
+        user.setLastSeen(LocalDateTime.now());
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
 
         User savedUser = userRepository.save(user);
         String token = jwtTokenProvider.generateToken(savedUser.getEmail());
@@ -114,12 +114,12 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword_hash())) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new RuntimeException("Неверный пароль");
         }
 
-        user.setIs_online(true);
-        user.setLast_seen(LocalDateTime.now());
+        user.setIsOnline(true);
+        user.setLastSeen(LocalDateTime.now());
         userRepository.save(user);
 
         String token = jwtTokenProvider.generateToken(user.getEmail());

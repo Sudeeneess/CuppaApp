@@ -29,4 +29,11 @@ public interface UserRepository extends JpaRepository<User, Integer> {
      * Проверить существование пользователя по email
      */
     boolean existsByEmail(String email);
+
+    /**
+     * Проверить существование пользователя по id
+     */
+    boolean existsById(Integer id);
+
+
 }

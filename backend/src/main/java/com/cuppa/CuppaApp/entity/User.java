@@ -7,20 +7,15 @@ import java.time.LocalDateTime;
 /**
  * Сущность пользователя (User) для приложения Cuppa
  *
- * <p>Отображает таблицу "Users" из базы данных в объектную модель Java.
+ * <p>Отображает таблицу "users" из базы данных в объектную модель Java.
  * Содержит основные поля профиля пользователя для системы мессенджера.
  *
- * <p><b>ВНИМАНИЕ:</b> Текущая реализация использует тип String для всех полей,
- * что может быть неоптимально для полей с определенным типом данных в БД
- * (например, boolean для is_online, timestamp для дат).
- * Рекомендуется использовать соответствующие Java-типы в будущих версиях.
- *
- * @author Walerya Pleskova
- * @version 1.0
- * @since 05.10.2025
+ * @author Petr Panteev
+ * @version 1.1
+ * @since 09.10.2025
  */
 
-@Table(name = "Users") // Указывает на имя таблицы в базе данных
+@Table(name = "users")
 @Entity // Помечает класс как JPA сущность
 @Data // Аннотация Lombok - автоматически генерирует геттеры, сеттеры, toString, equals и hashCode
 public class User {
@@ -38,99 +33,67 @@ public class User {
 
     /**
      * Уникальное имя пользователя для входа в систему
-     *
-     * <p>Используется для аутентификации и идентификации пользователя.
-     * Должно быть уникальным в пределах системы.
      */
-    @Column
+    @Column(name = "username", nullable = false, length = 255)
     private String username;
 
     /**
      * Электронная почта пользователя
-     *
-     * <p>Используется для восстановления пароля и уведомлений.
-     * Должна быть уникальной в пределах системы.
      */
-    @Column
+    @Column(name = "email", nullable = false, length = 255)
     private String email;
 
     /**
      * Хеш пароля пользователя
-     *
-     * <p><b>ВАЖНО:</b> Никогда не храните пароли в открытом виде.
-     * Должен содержать только хеш, полученный с помощью надежного алгоритма
-     * хеширования (bcrypt, argon2 и т.д.).
      */
-    @Column(length = 255) // или больше
-    private String password_hash;
+    @Column(name = "password_hash", nullable = false, length = 255)
+    private String passwordHash;
 
     /**
      * Имя пользователя
      */
-    @Column
-    private String first_name;
+    @Column(name = "first_name", length = 255)
+    private String firstName;
 
     /**
      * Фамилия пользователя
      */
-    @Column
-    private String last_name;
+    @Column(name = "last_name", length = 255)
+    private String lastName;
 
     /**
      * URL аватара пользователя
-     *
-     * <p>Ссылка на изображение профиля пользователя.
-     * Может быть относительным путем или полным URL.
      */
-    @Column
-    private String avatar_url;
+    @Column(name = "avatar_url", length = 255)
+    private String avatarUrl;
 
     /**
      * Номер телефона пользователя
-     *
-     * <p>Используется для дополнительной аутентификации
-     * и восстановления доступа.
      */
-    @Column
+    @Column(name = "phone", length = 255)
     private String phone;
 
     /**
      * Статус онлайн пользователя
-     *
-     * <p><b>ЗАМЕЧАНИЕ:</b> В текущей реализации используется String,
-     * хотя в БД это boolean поле. Рекомендуется изменить на Boolean.
-     * Ожидаемые значения: "true"/"false" или "online"/"offline".
      */
-    @Column
-    private Boolean is_online;
+    @Column(name = "is_online")
+    private Boolean isOnline = false;
 
     /**
      * Время последней активности пользователя
-     *
-     * <p><b>ЗАМЕЧАНИЕ:</b> В текущей реализации используется String,
-     * хотя в БД это TIMESTAMP. Рекомендуется изменить на LocalDateTime.
-     * Содержит timestamp последнего действия пользователя в системе.
      */
-    @Column
-    private LocalDateTime last_seen;
+    @Column(name = "last_seen")
+    private LocalDateTime lastSeen;
 
     /**
      * Дата и время создания учетной записи
-     *
-     * <p><b>ЗАМЕЧАНИЕ:</b> В текущей реализации используется String,
-     * хотя в БД это TIMESTAMP. Рекомендуется изменить на LocalDateTime.
-     * Устанавливается автоматически при создании пользователя.
      */
-    @Column
-    private LocalDateTime created_at;
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
     /**
      * Дата и время последнего обновления данных пользователя
-     *
-     * <p><b>ЗАМЕЧАНИЕ:</b> В текущей реализации используется String,
-     * хотя в БД это TIMESTAMP. Рекомендуется изменить на LocalDateTime.
-     * Обновляется при каждом изменении данных пользователя.
      */
-    @Column
-    private LocalDateTime updated_at;
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }
