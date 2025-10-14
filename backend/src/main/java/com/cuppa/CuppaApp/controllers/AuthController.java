@@ -3,8 +3,13 @@ package com.cuppa.CuppaApp.controllers;
 import com.cuppa.CuppaApp.dto.AuthRequest;
 import com.cuppa.CuppaApp.dto.AuthResponse;
 import com.cuppa.CuppaApp.service.AuthService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * Контроллер аутентификации и регистрации пользователей.
@@ -17,6 +22,8 @@ import org.springframework.web.bind.annotation.*;
  * @version 1.0
  * @since 2025-10-06
  */
+
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -64,5 +71,35 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request) {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Выполняет выход пользователя из системы.
+     *
+     * <p>Endpoint для корректного завершения сессии пользователя.
+     * На клиентской стороне необходимо удалить JWT-токен из хранилища.
+     * В текущей реализации выполняет логирование операции выхода,
+     * в будущем может быть расширен до blacklist токенов.</p>
+     *
+     * @return ResponseEntity с подтверждением успешного выхода
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        try {
+            log.info("User initiated logout procedure");
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Successfully logged out",
+                    "timestamp", LocalDateTime.now().toString(),
+                    "status", "success"
+            ));
+        } catch (Exception e) {
+            log.error("Error during logout procedure", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "error", "Logout failed",
+                            "timestamp", LocalDateTime.now().toString()
+                    ));
+        }
     }
 }

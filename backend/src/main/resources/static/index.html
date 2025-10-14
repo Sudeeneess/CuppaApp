@@ -358,6 +358,18 @@
                         🚀 Войти в систему
                     </button>
                 </div>
+
+                <div class="form-group">
+                    <label>🚪 Выход из системы:</label>
+                    <div class="quick-actions">
+                        <button class="btn btn-warning" onclick="logout()">
+                            🚪 Выйти из системы
+                        </button>
+                        <button class="btn btn-secondary" onclick="clearToken()">
+                            🚫 Очистить токен
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- СЕКЦИЯ 2: УПРАВЛЕНИЕ ЧАТАМИ -->
@@ -462,9 +474,6 @@
                     <button class="btn btn-secondary" onclick="getAllUsers()">
                         📊 Получить всех пользователей
                     </button>
-                    <button class="btn btn-warning" onclick="clearToken()">
-                        🚫 Очистить токен
-                    </button>
                 </div>
             </div>
         </div>
@@ -490,8 +499,6 @@
 </div>
 
 <script>
-    // JavaScript код остается таким же как в предыдущей версии
-    // Просто скопируй весь script блок из предыдущего HTML
     let currentToken = '';
     let currentUserId = null;
     let currentUser = null;
@@ -539,10 +546,6 @@
             'Content-Type': 'application/json'
         };
     }
-
-    // Все функции register(), login(), createChatRoom() и т.д.
-    // остаются точно такими же как в предыдущем коде
-    // Копируй их сюда...
 
     async function register() {
         const username = document.getElementById('regUsername').value;
@@ -635,6 +638,41 @@
             }
         } catch (error) {
             showResult(`❌ Ошибка: ${error.message}`, 'error');
+        }
+    }
+
+    // 🔥 НОВАЯ ФУНКЦИЯ: LOGOUT
+    async function logout() {
+        if (!currentToken) {
+            showResult('❌ Нет активного токена. Сначала войдите в систему.', 'error');
+            return;
+        }
+
+        try {
+            showResult('🚪 Отправка запроса на выход из системы...', 'info');
+
+            const response = await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                currentToken = '';
+                currentUserId = null;
+                currentUser = null;
+                updateTokenDisplay();
+
+                showResult(`✅ <strong>ВЫХОД ВЫПОЛНЕН УСПЕШНО!</strong><br>
+                📝 Сообщение: ${data.message}<br>
+                ⏰ Время: ${data.timestamp}<br>
+                🔐 Токен удален`, 'success');
+            } else {
+                showResult(`❌ Ошибка выхода: ${JSON.stringify(data)}`, 'error');
+            }
+        } catch (error) {
+            showResult(`❌ Ошибка при выходе: ${error.message}`, 'error');
         }
     }
 
