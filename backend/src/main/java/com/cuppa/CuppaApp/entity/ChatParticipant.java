@@ -96,7 +96,7 @@ public class ChatParticipant {
      */
     @Column(name = "last_read_at")
     private LocalDateTime lastReadAt;
-}
+
 
 /**
  * Перечисление ролей участников чата
@@ -107,9 +107,10 @@ public class ChatParticipant {
  * MODERATOR - модератор с правами управления сообщениями
  * OWNER - владелец чата с полными правами
  */
-enum ParticipantRole {
+public static enum ParticipantRole {
     MEMBER,
     ADMIN,
     MODERATOR,
     OWNER
+}
 }

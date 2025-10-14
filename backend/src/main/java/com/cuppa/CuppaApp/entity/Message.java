@@ -134,7 +134,7 @@ public class Message {
      */
     @Column(name = "edited_at")
     private LocalDateTime editedAt;
-}
+
 
 /**
  * Перечисление типов сообщений
@@ -147,11 +147,12 @@ public class Message {
  * VIDEO - видео сообщение
  * SYSTEM - системное сообщение
  */
-enum MessageType {
+public static enum MessageType {
     TEXT,
     IMAGE,
     FILE,
     VOICE,
     VIDEO,
     SYSTEM
+}
 }

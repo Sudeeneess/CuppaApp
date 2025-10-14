@@ -157,7 +157,7 @@ public class ChatRoom {
      */
     @Column(name = "max_participants")
     private Integer maxParticipants = 2;
-}
+
 
 /**
  * Перечисление типов чат-комнат
@@ -167,8 +167,7 @@ public class ChatRoom {
  * GROUP - групповые чаты с несколькими участниками
  * PUBLIC - публичные чаты, доступные для всех пользователей
  */
-enum ChatRoomType {
-    PRIVATE,
-    GROUP,
-    PUBLIC
+public static enum ChatRoomType {
+    PRIVATE, GROUP, PUBLIC
+}
 }
