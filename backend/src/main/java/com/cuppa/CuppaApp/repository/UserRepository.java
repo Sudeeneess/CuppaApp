@@ -34,6 +34,4 @@ public interface UserRepository extends JpaRepository<User, Integer> {
      * Проверить существование пользователя по id
      */
     boolean existsById(Integer id);
-
-
 }

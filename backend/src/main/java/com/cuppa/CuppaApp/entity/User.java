@@ -16,8 +16,8 @@ import java.time.LocalDateTime;
  */
 
 @Table(name = "users")
-@Entity // Помечает класс как JPA сущность
-@Data // Аннотация Lombok - автоматически генерирует геттеры, сеттеры, toString, equals и hashCode
+@Entity
+@Data
 public class User {
 
     /**

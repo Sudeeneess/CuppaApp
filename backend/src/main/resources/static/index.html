@@ -1,157 +1,523 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cuppa Messenger API Test</title>
+    <title>Тестирование Cuppa Messenger API</title>
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            margin: 40px;
-            line-height: 1.6;
-            background-color: #f5f5f5;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
             background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .section {
-            margin: 25px 0;
-            padding: 20px;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            background: #fafafa;
-        }
-        h3 {
-            color: #555;
-            margin-top: 0;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-        input {
-            margin: 8px 0;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            width: 200px;
-            display: block;
-        }
-        button {
-            margin: 10px 5px 10px 0;
-            padding: 10px 15px;
-            background: #007bff;
+
+        .header {
+            background: #2c3e50;
             color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
+            padding: 30px;
+            text-align: center;
         }
-        button:hover {
-            background: #0056b3;
-            transform: translateY(-1px);
-            transition: all 0.2s;
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
         }
-        .success {
-            color: #28a745;
-            font-weight: bold;
-            background: #d4edda;
-            padding: 10px;
-            border-radius: 4px;
-            border-left: 4px solid #28a745;
+
+        .header .subtitle {
+            font-size: 1.1em;
+            opacity: 0.8;
         }
-        .error {
-            color: #dc3545;
-            font-weight: bold;
-            background: #f8d7da;
-            padding: 10px;
-            border-radius: 4px;
-            border-left: 4px solid #dc3545;
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
         }
-        .info {
-            color: #17a2b8;
-            background: #d1ecf1;
-            padding: 10px;
-            border-radius: 4px;
-            border-left: 4px solid #17a2b8;
-        }
-        #result {
+
+        .left-panel {
             background: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            min-height: 100px;
-            border: 1px solid #e9ecef;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
+            padding: 30px;
+            border-right: 1px solid #e9ecef;
         }
+
+        .right-panel {
+            background: white;
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border-left: 4px solid #3498db;
+        }
+
+        .section.auth {
+            border-left-color: #2ecc71;
+        }
+
+        .section.chat {
+            border-left-color: #e74c3c;
+        }
+
+        .section.user {
+            border-left-color: #f39c12;
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            font-size: 1.2em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #34495e;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #219a52;
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #e67e22;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+            transform: translateY(-2px);
+        }
+
         .token-display {
-            background: #e9ecef;
-            padding: 8px;
-            border-radius: 4px;
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #3498db;
+        }
+
+        .token-display h4 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .token-preview {
+            font-family: 'Courier New', monospace;
             font-size: 12px;
             word-break: break-all;
-            margin: 10px 0;
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .user-info {
+            background: #e8f6f3;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #27ae60;
+        }
+
+        .result-area {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            min-height: 400px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .result-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+
+        .result-success {
+            background: #d5f4e6;
+            color: #27ae60;
+            border-left-color: #27ae60;
+        }
+
+        .result-error {
+            background: #fadbd8;
+            color: #e74c3c;
+            border-left-color: #e74c3c;
+        }
+
+        .result-info {
+            background: #d6eaf8;
+            color: #3498db;
+            border-left-color: #3498db;
+        }
+
+        .result-warning {
+            background: #fdebd0;
+            color: #f39c12;
+            border-left-color: #f39c12;
+        }
+
+        .timestamp {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+
+        .chat-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .step-indicator {
+            background: #3498db;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 10px;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        .instructions h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>☕ Cuppa Messenger API Test</h1>
-
-    <div class="section">
-        <h3>1. User Registration</h3>
-        <input type="text" id="regUsername" placeholder="Username" value="testuser2">
-        <input type="email" id="regEmail" placeholder="Email" value="test2@example.com">
-        <input type="password" id="regPassword" placeholder="Password" value="password123">
-        <button onclick="register()">Register User</button>
+    <div class="header">
+        <h1>☕ Cuppa Messenger</h1>
+        <div class="subtitle">Тестирование REST API</div>
     </div>
 
-    <div class="section">
-        <h3>2. User Login</h3>
-        <input type="email" id="loginEmail" placeholder="Email" value="bob@example.com">
-        <input type="password" id="loginPassword" placeholder="Password" value="password123">
-        <button onclick="login()">Login</button>
-    </div>
+    <div class="main-content">
+        <!-- ЛЕВАЯ ПАНЕЛЬ - УПРАВЛЕНИЕ -->
+        <div class="left-panel">
+            <!-- СЕКЦИЯ 1: АУТЕНТИФИКАЦИЯ -->
+            <div class="section auth">
+                <div class="section-title">
+                    <span class="step-indicator">1</span>
+                    🔐 Аутентификация пользователей
+                </div>
 
-    <div class="section">
-        <h3>3. Protected Endpoints (Requires Token)</h3>
-        <button onclick="getProfile()">Get My Profile</button>
-        <button onclick="getAllUsers()">Get All Users</button>
-        <button onclick="clearToken()">Clear Token</button>
+                <div class="instructions">
+                    <h4>📋 Инструкция:</h4>
+                    <ol>
+                        <li>Сначала зарегистрируйте 2-3 тестовых пользователя</li>
+                        <li>Запомните их ID (появятся в результатах)</li>
+                        <li>Войдите под одним из пользователей для работы с чатами</li>
+                    </ol>
+                </div>
 
-        <div id="tokenInfo" class="token-display" style="display: none;">
-            <strong>Current Token:</strong> <span id="tokenPreview"></span>
+                <div class="form-group">
+                    <label>📝 Регистрация нового пользователя:</label>
+                    <input type="text" id="regUsername" placeholder="Имя пользователя" value="user1">
+                    <input type="email" id="regEmail" placeholder="Email" value="user1@example.com" style="margin-top: 10px;">
+                    <input type="password" id="regPassword" placeholder="Пароль" value="password123" style="margin-top: 10px;">
+                    <button class="btn btn-success" onclick="register()">
+                        ✅ Зарегистрировать пользователя
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label>🔑 Вход в систему:</label>
+                    <input type="email" id="loginEmail" placeholder="Email" value="user1@example.com">
+                    <input type="password" id="loginPassword" placeholder="Пароль" value="password123" style="margin-top: 10px;">
+                    <button class="btn btn-primary" onclick="login()">
+                        🚀 Войти в систему
+                    </button>
+                </div>
+            </div>
+
+            <!-- СЕКЦИЯ 2: УПРАВЛЕНИЕ ЧАТАМИ -->
+            <div class="section chat">
+                <div class="section-title">
+                    <span class="step-indicator">2</span>
+                    💬 Управление чат-комнатами
+                </div>
+
+                <div class="instructions">
+                    <h4>💡 Сначала выполните Шаг 1 (войдите в систему)</h4>
+                </div>
+
+                <div class="form-group">
+                    <label>🆕 Создать новую чат-комнату:</label>
+                    <input type="text" id="chatName" placeholder="Название чата" value="Технические обсуждения">
+                    <select id="chatType" style="margin-top: 10px;">
+                        <option value="PRIVATE">Приватный чат (2 человека)</option>
+                        <option value="GROUP" selected>Групповой чат</option>
+                        <option value="PUBLIC">Публичный чат</option>
+                    </select>
+                    <input type="text" id="chatDescription" placeholder="Описание чата" value="Обсуждение технических вопросов" style="margin-top: 10px;">
+                    <button class="btn btn-success" onclick="createChatRoom()">
+                        ➕ Создать чат-комнату
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label>👥 Создать приватный чат между пользователями:</label>
+                    <div class="chat-controls">
+                        <input type="number" id="user1Id" placeholder="ID пользователя 1" value="1">
+                        <input type="number" id="user2Id" placeholder="ID пользователя 2" value="2">
+                    </div>
+                    <input type="number" id="createdById" placeholder="ID создателя" value="1" style="margin-top: 10px;">
+                    <button class="btn btn-primary" onclick="createPrivateChat()">
+                        🤝 Создать приватный чат
+                    </button>
+                </div>
+
+                <div class="quick-actions">
+                    <button class="btn btn-primary" onclick="getAllChatRooms()">
+                        📋 Получить все чаты
+                    </button>
+                    <button class="btn btn-primary" onclick="getChatById()">
+                        🔍 Найти чат по ID
+                    </button>
+                    <input type="number" id="chatId" placeholder="ID чата" value="1" style="width: 80px;">
+                </div>
+
+                <div class="quick-actions">
+                    <button class="btn btn-warning" onclick="updateChat()">
+                        ✏️ Обновить чат
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteChat()">
+                        🗑️ Удалить чат
+                    </button>
+                </div>
+            </div>
+
+            <!-- СЕКЦИЯ 3: ПОИСК И ДОПОЛНИТЕЛЬНЫЕ ОПЕРАЦИИ -->
+            <div class="section">
+                <div class="section-title">
+                    <span class="step-indicator">3</span>
+                    🔍 Поиск и дополнительные операции
+                </div>
+
+                <div class="form-group">
+                    <label>Поиск чатов по названию:</label>
+                    <input type="text" id="searchName" placeholder="Введите название для поиска" value="Технические">
+                    <div class="quick-actions">
+                        <button class="btn btn-primary" onclick="searchChats()">
+                            🔎 Поиск всех чатов
+                        </button>
+                        <button class="btn btn-primary" onclick="searchGroupChats()">
+                            👥 Поиск групповых чатов
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- СЕКЦИЯ 4: ИНФОРМАЦИЯ О ТЕКУЩЕЙ СЕССИИ -->
+            <div class="section user">
+                <div class="section-title">
+                    <span class="step-indicator">4</span>
+                    👤 Информация о сессии
+                </div>
+
+                <div class="token-display" id="tokenInfo" style="display: none;">
+                    <h4>🔐 Текущий JWT токен:</h4>
+                    <div class="token-preview" id="tokenPreview"></div>
+                </div>
+
+                <div class="user-info" id="userInfo" style="display: none;">
+                    <h4>👤 Текущий пользователь:</h4>
+                    <div id="userDetails"></div>
+                </div>
+
+                <div class="quick-actions">
+                    <button class="btn btn-primary" onclick="getProfile()">
+                        👤 Получить мой профиль
+                    </button>
+                    <button class="btn btn-secondary" onclick="getAllUsers()">
+                        📊 Получить всех пользователей
+                    </button>
+                    <button class="btn btn-warning" onclick="clearToken()">
+                        🚫 Очистить токен
+                    </button>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <div class="section">
-        <h3>Test Results:</h3>
-        <div id="result">
-            <div class="info">Ready for testing!<br>1. First register or login<br>2. Then test protected endpoints</div>
+        <!-- ПРАВАЯ ПАНЕЛЬ - РЕЗУЛЬТАТЫ -->
+        <div class="right-panel">
+            <div class="section">
+                <div class="section-title">📊 Результаты тестирования</div>
+                <div class="result-area" id="result">
+                    <div class="result-item result-info">
+                        <div class="timestamp">[Система]</div>
+                        Готов к тестированию!<br><br>
+                        <strong>Рекомендуемая последовательность:</strong><br>
+                        1. Зарегистрируйте пользователей<br>
+                        2. Войдите в систему<br>
+                        3. Создайте чат-комнаты<br>
+                        4. Тестируйте остальные операции
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
+    // JavaScript код остается таким же как в предыдущей версии
+    // Просто скопируй весь script блок из предыдущего HTML
     let currentToken = '';
+    let currentUserId = null;
+    let currentUser = null;
 
     function updateTokenDisplay() {
         const tokenInfo = document.getElementById('tokenInfo');
         const tokenPreview = document.getElementById('tokenPreview');
+        const userInfo = document.getElementById('userInfo');
+        const userDetails = document.getElementById('userDetails');
 
         if (currentToken) {
             tokenInfo.style.display = 'block';
             tokenPreview.textContent = currentToken.substring(0, 50) + '...';
+
+            if (currentUser) {
+                userInfo.style.display = 'block';
+                userDetails.innerHTML = `
+                    <strong>ID:</strong> ${currentUser.id}<br>
+                    <strong>Имя:</strong> ${currentUser.username}<br>
+                    <strong>Email:</strong> ${currentUser.email}<br>
+                    <strong>Онлайн:</strong> ${currentUser.is_online ? 'Да' : 'Нет'}
+                `;
+            }
         } else {
             tokenInfo.style.display = 'none';
+            userInfo.style.display = 'none';
         }
     }
 
@@ -159,10 +525,24 @@
         const result = document.getElementById('result');
         const timestamp = new Date().toLocaleTimeString();
         const messageDiv = document.createElement('div');
-        messageDiv.className = type;
-        messageDiv.innerHTML = `<strong>[${timestamp}]</strong><br>${message}`;
+        messageDiv.className = `result-item result-${type}`;
+        messageDiv.innerHTML = `<div class="timestamp">[${timestamp}]</div>${message}`;
         result.insertBefore(messageDiv, result.firstChild);
+
+        // Автопрокрутка к новым сообщениям
+        result.scrollTop = 0;
     }
+
+    function getAuthHeaders() {
+        return {
+            'Authorization': 'Bearer ' + currentToken,
+            'Content-Type': 'application/json'
+        };
+    }
+
+    // Все функции register(), login(), createChatRoom() и т.д.
+    // остаются точно такими же как в предыдущем коде
+    // Копируй их сюда...
 
     async function register() {
         const username = document.getElementById('regUsername').value;
@@ -170,12 +550,12 @@
         const password = document.getElementById('regPassword').value;
 
         if (!username || !email || !password) {
-            showResult('Please fill all fields', 'error');
+            showResult('❌ Пожалуйста, заполните все поля', 'error');
             return;
         }
 
         try {
-            showResult('Sending registration request...', 'info');
+            showResult('📤 Отправка запроса на регистрацию...', 'info');
 
             const response = await fetch('/api/auth/register', {
                 method: 'POST',
@@ -194,17 +574,24 @@
             const data = await response.json();
             if (response.ok) {
                 currentToken = data.accessToken;
+                currentUserId = data.userId;
+                currentUser = {
+                    id: data.userId,
+                    username: data.username,
+                    email: data.email,
+                    is_online: true
+                };
                 updateTokenDisplay();
-                showResult(`✅ REGISTRATION SUCCESSFUL!<br>
-User ID: ${data.userId}<br>
-Username: ${data.username}<br>
-Email: ${data.email}<br>
-Token received and stored`, 'success');
+                showResult(`✅ <strong>РЕГИСТРАЦИЯ УСПЕШНА!</strong><br>
+                👤 ID пользователя: <strong>${data.userId}</strong><br>
+                📛 Имя: ${data.username}<br>
+                📧 Email: ${data.email}<br>
+                🔐 Токен получен и сохранен`, 'success');
             } else {
-                showResult(`❌ Registration failed: ${JSON.stringify(data)}`, 'error');
+                showResult(`❌ Ошибка регистрации: ${JSON.stringify(data)}`, 'error');
             }
         } catch (error) {
-            showResult(`❌ Error: ${error.message}`, 'error');
+            showResult(`❌ Ошибка: ${error.message}`, 'error');
         }
     }
 
@@ -213,12 +600,12 @@ Token received and stored`, 'success');
         const password = document.getElementById('loginPassword').value;
 
         if (!email || !password) {
-            showResult('Please enter email and password', 'error');
+            showResult('❌ Пожалуйста, введите email и пароль', 'error');
             return;
         }
 
         try {
-            showResult('Sending login request...', 'info');
+            showResult('📤 Отправка запроса на вход...', 'info');
 
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
@@ -231,33 +618,315 @@ Token received and stored`, 'success');
             const data = await response.json();
             if (response.ok) {
                 currentToken = data.accessToken;
+                currentUserId = data.userId;
+                currentUser = {
+                    id: data.userId,
+                    username: data.username,
+                    email: data.email,
+                    is_online: true
+                };
                 updateTokenDisplay();
-                showResult(`✅ LOGIN SUCCESSFUL!<br>
-Welcome ${data.username}!<br>
-Token received and stored`, 'success');
+                showResult(`✅ <strong>ВХОД ВЫПОЛНЕН!</strong><br>
+                👋 Добро пожаловать, <strong>${data.username}!</strong><br>
+                👤 ID пользователя: <strong>${data.userId}</strong><br>
+                🔐 Токен получен и сохранен`, 'success');
             } else {
-                showResult(`❌ Login failed: ${JSON.stringify(data)}`, 'error');
+                showResult(`❌ Ошибка входа: ${JSON.stringify(data)}`, 'error');
             }
         } catch (error) {
-            showResult(`❌ Error: ${error.message}`, 'error');
+            showResult(`❌ Ошибка: ${error.message}`, 'error');
+        }
+    }
+
+    async function createChatRoom() {
+        if (!currentToken) {
+            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
+            return;
+        }
+
+        const name = document.getElementById('chatName').value;
+        const type = document.getElementById('chatType').value;
+        const description = document.getElementById('chatDescription').value;
+
+        if (!name) {
+            showResult('❌ Пожалуйста, введите название чата', 'error');
+            return;
+        }
+
+        try {
+            showResult('📤 Создание чат-комнаты...', 'info');
+
+            const response = await fetch('/api/chat-rooms', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    name,
+                    type,
+                    description,
+                    maxParticipants: type === 'PRIVATE' ? 2 : 10
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                showResult(`✅ <strong>ЧАТ-КОМНАТА СОЗДАНА!</strong><br>
+                🆔 ID: <strong>${data.id}</strong><br>
+                📛 Название: ${data.name}<br>
+                🏷️ Тип: ${data.type}<br>
+                📝 Описание: ${data.description}<br>
+                ✅ Активна: ${data.isActive ? 'Да' : 'Нет'}`, 'success');
+            } else {
+                showResult(`❌ Ошибка создания чата: ${JSON.stringify(data)}`, 'error');
+            }
+        } catch (error) {
+            showResult(`❌ Ошибка: ${error.message}`, 'error');
+        }
+    }
+
+    async function getAllChatRooms() {
+        if (!currentToken) {
+            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
+            return;
+        }
+
+        try {
+            showResult('📥 Получение списка всех чатов...', 'info');
+
+            const response = await fetch('/api/chat-rooms', {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            showResult(`📊 <strong>ВСЕ ЧАТ-КОМНАТЫ (${data.length} шт.):</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+        } catch (error) {
+            showResult(`❌ Ошибка: ${error.message}`, 'error');
+        }
+    }
+
+    async function getChatById() {
+        if (!currentToken) {
+            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
+            return;
+        }
+
+        const chatId = document.getElementById('chatId').value;
+        if (!chatId) {
+            showResult('❌ Пожалуйста, введите ID чата', 'error');
+            return;
+        }
+
+        try {
+            showResult(`🔍 Поиск чата с ID: ${chatId}...`, 'info');
+
+            const response = await fetch(`/api/chat-rooms/${chatId}`, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+
+            if (response.status === 404) {
+                showResult(`❌ Чат с ID ${chatId} не найден`, 'error');
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            showResult(`✅ <strong>ИНФОРМАЦИЯ О ЧАТЕ:</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+        } catch (error) {
+            showResult(`❌ Ошибка: ${error.message}`, 'error');
+        }
+    }
+
+    async function createPrivateChat() {
+        if (!currentToken) {
+            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
+            return;
+        }
+
+        const user1Id = document.getElementById('user1Id').value;
+        const user2Id = document.getElementById('user2Id').value;
+        const createdById = document.getElementById('createdById').value;
+
+        if (!user1Id || !user2Id || !createdById) {
+            showResult('❌ Пожалуйста, заполните все ID пользователей', 'error');
+            return;
+        }
+
+        try {
+            showResult('🤝 Создание приватного чата...', 'info');
+
+            const response = await fetch(`/api/chat-rooms/private?user1Id=${user1Id}&user2Id=${user2Id}&createdBy=${createdById}`, {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                showResult(`✅ <strong>ПРИВАТНЫЙ ЧАТ СОЗДАН/НАЙДЕН!</strong><br>
+                🆔 ID: <strong>${data.id}</strong><br>
+                🏷️ Тип: ${data.type}<br>
+                👤 Создатель: ${createdById}`, 'success');
+            } else {
+                showResult(`❌ Ошибка создания приватного чата: ${JSON.stringify(data)}`, 'error');
+            }
+        } catch (error) {
+            showResult(`❌ Ошибка: ${error.message}`, 'error');
+        }
+    }
+
+    async function searchChats() {
+        if (!currentToken) {
+            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
+            return;
+        }
+
+        const searchName = document.getElementById('searchName').value;
+        if (!searchName) {
+            showResult('❌ Пожалуйста, введите поисковый запрос', 'error');
+            return;
+        }
+
+        try {
+            showResult(`🔍 Поиск чатов по названию: "${searchName}"...`, 'info');
+
+            const response = await fetch(`/api/chat-rooms/search?name=${encodeURIComponent(searchName)}`, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            showResult(`🔍 <strong>РЕЗУЛЬТАТЫ ПОИСКА (${data.length} найдено):</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+        } catch (error) {
+            showResult(`❌ Ошибка: ${error.message}`, 'error');
+        }
+    }
+
+    async function searchGroupChats() {
+        if (!currentToken) {
+            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
+            return;
+        }
+
+        const searchName = document.getElementById('searchName').value;
+        if (!searchName) {
+            showResult('❌ Пожалуйста, введите поисковый запрос', 'error');
+            return;
+        }
+
+        try {
+            showResult(`👥 Поиск групповых чатов: "${searchName}"...`, 'info');
+
+            const response = await fetch(`/api/chat-rooms/search/group?name=${encodeURIComponent(searchName)}`, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            showResult(`👥 <strong>ГРУППОВЫЕ ЧАТЫ (${data.length} найдено):</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+        } catch (error) {
+            showResult(`❌ Ошибка: ${error.message}`, 'error');
+        }
+    }
+
+    async function updateChat() {
+        if (!currentToken) {
+            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
+            return;
+        }
+
+        const chatId = document.getElementById('chatId').value;
+        if (!chatId) {
+            showResult('❌ Пожалуйста, введите ID чата', 'error');
+            return;
+        }
+
+        try {
+            showResult(`✏️ Обновление чата ${chatId}...`, 'info');
+
+            const response = await fetch(`/api/chat-rooms/${chatId}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    name: `Обновленный чат ${Date.now()}`,
+                    description: 'Этот чат был обновлен через API'
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                showResult(`✅ <strong>ЧАТ ОБНОВЛЕН!</strong><br>
+                🆔 ID: ${data.id}<br>
+                📛 Новое название: ${data.name}<br>
+                📝 Описание: ${data.description}`, 'success');
+            } else {
+                showResult(`❌ Ошибка обновления чата: ${JSON.stringify(data)}`, 'error');
+            }
+        } catch (error) {
+            showResult(`❌ Ошибка: ${error.message}`, 'error');
+        }
+    }
+
+    async function deleteChat() {
+        if (!currentToken) {
+            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
+            return;
+        }
+
+        const chatId = document.getElementById('chatId').value;
+        if (!chatId) {
+            showResult('❌ Пожалуйста, введите ID чата', 'error');
+            return;
+        }
+
+        if (!confirm(`Вы уверены, что хотите удалить чат ${chatId}?`)) {
+            return;
+        }
+
+        try {
+            showResult(`🗑️ Удаление чата ${chatId}...`, 'warning');
+
+            const response = await fetch(`/api/chat-rooms/${chatId}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+
+            if (response.ok) {
+                showResult(`✅ <strong>ЧАТ ${chatId} УДАЛЕН (мягкое удаление)</strong>`, 'success');
+            } else {
+                throw new Error(`HTTP ${response.status}`);
+            }
+        } catch (error) {
+            showResult(`❌ Ошибка: ${error.message}`, 'error');
         }
     }
 
     async function getProfile() {
         if (!currentToken) {
-            showResult('Please login first to get a token', 'error');
+            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
             return;
         }
 
         try {
-            showResult('Requesting user profile...', 'info');
+            showResult('👤 Запрос профиля пользователя...', 'info');
 
             const response = await fetch('/api/users/me', {
                 method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + currentToken,
-                    'Content-Type': 'application/json'
-                }
+                headers: getAuthHeaders()
             });
 
             if (!response.ok) {
@@ -265,21 +934,23 @@ Token received and stored`, 'success');
             }
 
             const data = await response.json();
-            showResult(`✅ PROFILE RETRIEVED!<br>
-ID: ${data.id}<br>
-Username: ${data.username}<br>
-Email: ${data.email}<br>
-Online: ${data.is_online}<br>
-Last Seen: ${new Date(data.last_seen).toLocaleString()}`, 'success');
+            currentUser = data;
+            updateTokenDisplay();
+            showResult(`✅ <strong>ПРОФИЛЬ ПОЛУЧЕН!</strong><br>
+            🆔 ID: ${data.id}<br>
+            📛 Имя: ${data.username}<br>
+            📧 Email: ${data.email}<br>
+            🟢 Онлайн: ${data.is_online ? 'Да' : 'Нет'}<br>
+            ⏰ Последний раз онлайн: ${new Date(data.last_seen).toLocaleString()}`, 'success');
 
         } catch (error) {
-            showResult(`❌ Error getting profile: ${error.message}`, 'error');
+            showResult(`❌ Ошибка получения профиля: ${error.message}`, 'error');
         }
     }
 
     async function getAllUsers() {
         try {
-            showResult('Fetching all users...', 'info');
+            showResult('📊 Получение списка всех пользователей...', 'info');
 
             const response = await fetch('/api/admin/users', {
                 headers: {
@@ -292,19 +963,21 @@ Last Seen: ${new Date(data.last_seen).toLocaleString()}`, 'success');
             }
 
             const data = await response.json();
-            showResult(`📊 ALL USERS (${data.length} total):<br>${JSON.stringify(data, null, 2)}`, 'success');
+            showResult(`📊 <strong>ВСЕ ПОЛЬЗОВАТЕЛИ (${data.length} всего):</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
         } catch (error) {
-            showResult(`❌ Error getting users: ${error.message}`, 'error');
+            showResult(`❌ Ошибка получения пользователей: ${error.message}`, 'error');
         }
     }
 
     function clearToken() {
         currentToken = '';
+        currentUserId = null;
+        currentUser = null;
         updateTokenDisplay();
-        showResult('Token cleared. Please login again to access protected endpoints.', 'info');
+        showResult('🔐 Токен очищен. Пожалуйста, войдите снова для доступа к защищенным endpoint.', 'info');
     }
 
-    // Initialize
+    // Инициализация
     updateTokenDisplay();
 </script>
 </body>

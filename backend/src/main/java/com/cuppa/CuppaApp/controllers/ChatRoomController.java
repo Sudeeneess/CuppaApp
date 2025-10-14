@@ -11,6 +11,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.cuppa.CuppaApp.dto.ChatRoomDto;
+import com.cuppa.CuppaApp.dto.CreateChatRequest;
+import com.cuppa.CuppaApp.dto.UpdateChatRequest;
+import jakarta.validation.Valid;
+
+import java.util.stream.Collectors;
 
 import java.util.List;
 
@@ -20,6 +26,9 @@ import java.util.List;
  * <p>Предоставляет API endpoints для создания, поиска и управления чат-комнатами.
  * Все методы возвращают стандартизированные HTTP ответы и логируют операции.
  *
+ * <p>Использует DTO для безопасного обмена данными с клиентами.
+ *
+ * @author Walerya Pleskova
  * @author Petr Panteev
  * @version 1.0
  * @since 14.10.2025
@@ -37,13 +46,18 @@ public class ChatRoomController {
      * <p>Используется для загрузки общего списка чатов в интерфейсе мессенджера.
      * Возвращает только активные чаты, отсортированные по времени последнего сообщения.
      *
-     * @return ResponseEntity со списком активных чат-комнат
+     * <p>Использует DTO для безопасного возврата данных клиенту.
+     *
+     * @return ResponseEntity со списком активных чат-комнат в формате DTO
      */
     @GetMapping
-    public ResponseEntity<List<ChatRoom>> getAllChatRooms() {
+    public ResponseEntity<List<ChatRoomDto>> getAllChatRooms() {
         try {
             List<ChatRoom> chatRooms = chatRoomService.getChatRoomsOrderedByLastMessage();
-            return ResponseEntity.ok(chatRooms);
+            List<ChatRoomDto> dtos = chatRooms.stream()
+                    .map(ChatRoomDto::fromEntity)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(dtos);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -55,13 +69,16 @@ public class ChatRoomController {
      * <p>Основной endpoint для получения информации о конкретном чате.
      * Используется при переходе пользователя в конкретный диалог.
      *
+     * <p>Возвращает данные в формате DTO для защиты внутренней структуры данных.
+     *
      * @param id идентификатор чат-комнаты
-     * @return ResponseEntity с чат-комнатой или 404 если не найдена
+     * @return ResponseEntity с чат-комнатой в формате DTO или 404 если не найдена
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ChatRoom> getChatRoomById(@PathVariable Integer id) {
+    public ResponseEntity<ChatRoomDto> getChatRoomById(@PathVariable Integer id) {
         try {
             return chatRoomService.getChatRoomById(id)
+                    .map(ChatRoomDto::fromEntity)
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
@@ -75,14 +92,26 @@ public class ChatRoomController {
      * <p>Endpoint для создания новых чатов в мессенджере. Поддерживает создание
      * приватных, групповых и публичных чатов с соответствующей валидацией.
      *
-     * @param chatRoom данные новой чат-комнаты
-     * @return ResponseEntity с созданной чат-комнатой и статусом 201
+     * <p>Использует DTO запрос для безопасного приема данных от клиента.
+     *
+     * @param request DTO с данными для создания чат-комнаты
+     * @return ResponseEntity с созданной чат-комнатой в формате DTO и статусом 201
      */
     @PostMapping
-    public ResponseEntity<?> createChatRoom(@RequestBody ChatRoom chatRoom) {
+    public ResponseEntity<?> createChatRoom(@RequestBody @Valid CreateChatRequest request) {
         try {
+            // Конвертируем DTO в Entity для сохранения в базу
+            ChatRoom chatRoom = new ChatRoom();
+            chatRoom.setName(request.getName());
+            chatRoom.setType(request.getType());
+            chatRoom.setDescription(request.getDescription());
+            chatRoom.setAvatarUrl(request.getAvatarUrl());
+            chatRoom.setMaxParticipants(request.getMaxParticipants());
+
             ChatRoom createdChatRoom = chatRoomService.createChatRoom(chatRoom);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdChatRoom);
+            ChatRoomDto responseDto = ChatRoomDto.fromEntity(createdChatRoom);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -97,23 +126,26 @@ public class ChatRoomController {
      * <p>Специальный endpoint для создания приватных диалогов. Предотвращает
      * создание дубликатов чатов между одними и теми же пользователями.
      *
-     * @param user1Id идентификатор первого пользователя
-     * @param user2Id идентификатор второго пользователя
+     * <p>Возвращает данные в безопасном DTO формате.
+     *
+     * @param user1Id   идентификатор первого пользователя
+     * @param user2Id   идентификатор второго пользователя
      * @param createdBy идентификатор пользователя, создающего чат
-     * @return ResponseEntity с приватным чатом
+     * @return ResponseEntity с приватным чатом в формате DTO
      */
     @PostMapping("/private")
-    public ResponseEntity<ChatRoom> createOrGetPrivateChat(
+    public ResponseEntity<ChatRoomDto> createOrGetPrivateChat(
             @RequestParam Integer user1Id,
             @RequestParam Integer user2Id,
             @RequestParam Integer createdBy) {
         try {
-            // В реальном приложении здесь был бы объект User
             User creator = new User();
             creator.setId(createdBy);
 
             ChatRoom privateChat = chatRoomService.createOrGetPrivateChat(user1Id, user2Id, creator);
-            return ResponseEntity.status(HttpStatus.CREATED).body(privateChat);
+            ChatRoomDto responseDto = ChatRoomDto.fromEntity(privateChat);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -125,15 +157,27 @@ public class ChatRoomController {
      * <p>Позволяет изменять основные параметры чата: название, описание, аватар.
      * Используется в настройках чата в интерфейсе мессенджера.
      *
-     * @param id идентификатор чат-комнаты
-     * @param chatRoomDetails новые данные чат-комнаты
-     * @return ResponseEntity с обновленной чат-комнатой
+     * <p>Использует DTO для безопасного приема данных от клиента.
+     *
+     * @param id      идентификатор чат-комнаты
+     * @param request DTO с новыми данными чат-комнаты
+     * @return ResponseEntity с обновленной чат-комнатой в формате DTO
+     * @author Walerya Pleskova
      */
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateChatRoom(@PathVariable Integer id, @RequestBody ChatRoom chatRoomDetails) {
+    public ResponseEntity<?> updateChatRoom(@PathVariable Integer id, @RequestBody @Valid UpdateChatRequest request) {
         try {
+            // Конвертируем DTO в Entity для обновления
+            ChatRoom chatRoomDetails = new ChatRoom();
+            chatRoomDetails.setName(request.getName());
+            chatRoomDetails.setAvatarUrl(request.getAvatarUrl());
+            chatRoomDetails.setDescription(request.getDescription());
+            chatRoomDetails.setMaxParticipants(request.getMaxParticipants());
+
             ChatRoom updatedChatRoom = chatRoomService.updateChatRoom(id, chatRoomDetails);
-            return ResponseEntity.ok(updatedChatRoom);
+            ChatRoomDto responseDto = ChatRoomDto.fromEntity(updatedChatRoom);
+
+            return ResponseEntity.ok(responseDto);
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
@@ -246,9 +290,9 @@ public class ChatRoomController {
      * <p>Служебный endpoint, вызываемый при отправке нового сообщения в чат.
      * Обновляет превью чата в списке диалогов для всех участников.
      *
-     * @param chatRoomId идентификатор чат-комнаты
+     * @param chatRoomId      идентификатор чат-комнаты
      * @param lastMessageText текст последнего сообщения
-     * @param senderId идентификатор отправителя
+     * @param senderId        идентификатор отправителя
      * @return ResponseEntity с статусом 204 No Content
      */
     @PatchMapping("/{chatRoomId}/last-message")

@@ -1,7 +1,9 @@
 package com.cuppa.CuppaApp.controllers;
 
+import com.cuppa.CuppaApp.dto.UserDto;
 import com.cuppa.CuppaApp.entity.User;
 import com.cuppa.CuppaApp.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,14 +13,17 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * Контроллер для управления профилем текущего пользователя.
- * Предоставляет доступ к данным аутентифицированного пользователя.
+ * REST контроллер для управления профилем текущего пользователя.
  *
- * <p>Обеспечивает получение информации о текущем пользователе
- * на основе JWT-токена из запроса.</p>
+ * <p>Предоставляет доступ к данным аутентифицированного пользователя
+ * на основе JWT-токена из запроса. Все endpoints требуют действительный
+ * JWT-токен и возвращают данные в безопасном DTO формате.
+ *
+ * <p><b>Безопасность:</b> Все методы возвращают UserDto вместо User entity,
+ * что гарантирует что чувствительные данные (пароли) никогда не передаются клиенту.
  *
  * @author Walerya Pleskova
- * @version 1.0
+ * @version 2.0
  * @since 2025-10-06
  */
 @RestController
@@ -37,38 +42,46 @@ public class UserProfileController {
     }
 
     /**
-     * Возвращает данные текущего аутентифицированного пользователя.
+     * Возвращает данные текущего аутентифицированного пользователя в безопасном DTO формате.
      *
-     * <p>Извлекает имя пользователя из контекста безопасности Spring
-     * и возвращает полную информацию о пользователе из базы данных.</p>
+     * <p>Извлекает email пользователя из контекста безопасности Spring и возвращает
+     * полную информацию о пользователе из базы данных в виде UserDto.
      *
-     * <p><b>Важно:</b> Метод требует действительного JWT-токена в заголовке запроса.
-     * Доступен только аутентифицированным пользователям.</p>
+     * <p><b>Требования:</b>
+     * <ul>
+     *   <li>Действительный JWT-токен в заголовке Authorization</li>
+     *   <li>Пользователь должен существовать в базе данных</li>
+     * </ul>
      *
      * @param authentication объект аутентификации Spring Security
-     * @return данные текущего пользователя
+     * @return данные текущего пользователя в формате UserDto
      * @throws RuntimeException если пользователь не найден в базе данных
      * @see Authentication
-     * @see User
+     * @see UserDto
      */
     @GetMapping("/me")
-    public User getCurrentUser(Authentication authentication) {
-        String email = authentication.getName();  //
+    public UserDto getCurrentUser(Authentication authentication) {
+        String email = authentication.getName();
 
-        return userRepository.findByEmail(email)
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+
+        return UserDto.fromEntity(user);
     }
 
     /**
-     * Возвращает список всех зарегистрированных пользователей.
+     * Возвращает список всех зарегистрированных пользователей в безопасном DTO формате.
      *
      * <p>Предоставляет доступ к базе пользователей для административных целей
-     * или отладки. В production следует добавить проверки прав доступа.</p>
+     * или отладки. В production следует добавить проверки прав доступа.
      *
-     * @return список всех пользователей системы
+     * <p><b>Безопасность:</b> Возвращает UserDto вместо User entity, что исключает
+     * передачу хэшей паролей клиенту.
+     *
+     * @return ResponseEntity со списком всех пользователей в формате UserDto
      */
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
+    public ResponseEntity<List<UserDto>> getAllUsers() {
         try {
             List<User> users = userRepository.findAll();
 
@@ -76,9 +89,13 @@ public class UserProfileController {
                 return ResponseEntity.noContent().build();
             }
 
-            return ResponseEntity.ok(users);
+            List<UserDto> userDtos = users.stream()
+                    .map(UserDto::fromEntity)
+                    .toList();
+
+            return ResponseEntity.ok(userDtos);
         } catch (Exception e) {
-            return ResponseEntity.status(500).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

@@ -6,6 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.cuppa.CuppaApp.dto.UserDto;
+
+import java.util.stream.Collectors;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,8 +31,10 @@ import java.util.Optional;
  * Рекомендуется добавить аутентификацию и авторизацию для защиты endpoints в продакшн-среде.
  *
  * @author Petr Panteev
- * @version 1.1
+ * @author Walerya Pleskova
+ * @version 1.2
  * @since 05.10.2025
+ * upd 14.10.2025
  */
 @RestController
 @RequestMapping("/api/admin/users")
@@ -54,14 +59,14 @@ public class UserRestController {
      * возвращает статус 204 No Content.
      *
      * @return ResponseEntity со списком пользователей и соответствующим HTTP статусом:
-     *         <ul>
-     *           <li>200 OK - пользователи найдены и возвращены</li>
-     *           <li>204 No Content - пользователи отсутствуют в системе</li>
-     *           <li>500 Internal Server Error - произошла ошибка сервера</li>
-     *         </ul>
+     * <ul>
+     *   <li>200 OK - пользователи найдены и возвращены</li>
+     *   <li>204 No Content - пользователи отсутствуют в системе</li>
+     *   <li>500 Internal Server Error - произошла ошибка сервера</li>
+     * </ul>
      */
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
+    public ResponseEntity<List<UserDto>> getAllUsers() {
         try {
             List<User> users = userRepository.findAll();
 
@@ -69,7 +74,10 @@ public class UserRestController {
                 return new ResponseEntity<>(HttpStatus.NO_CONTENT);
             }
 
-            return new ResponseEntity<>(users, HttpStatus.OK);
+            List<UserDto> userDtos = users.stream()
+                    .map(UserDto::fromEntity)
+                    .collect(Collectors.toList());
+            return new ResponseEntity<>(userDtos, HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -85,17 +93,18 @@ public class UserRestController {
      *
      * @param id уникальный идентификатор пользователя (целое число)
      * @return ResponseEntity с данными пользователя и соответствующим HTTP статусом:
-     *         <ul>
-     *           <li>200 OK - пользователь найден и возвращен</li>
-     *           <li>404 Not Found - пользователь с указанным ID не существует</li>
-     *         </ul>
+     * <ul>
+     *   <li>200 OK - пользователь найден и возвращен</li>
+     *   <li>404 Not Found - пользователь с указанным ID не существует</li>
+     * </ul>
      */
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable("id") Integer id) {
+    public ResponseEntity<UserDto> getUserById(@PathVariable("id") Integer id) {
         Optional<User> userData = userRepository.findById(id);
 
         if (userData.isPresent()) {
-            return new ResponseEntity<>(userData.get(), HttpStatus.OK);
+            UserDto userDto = UserDto.fromEntity(userData.get());
+            return new ResponseEntity<>(userDto, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
@@ -115,17 +124,18 @@ public class UserRestController {
      *
      * @param username уникальное имя пользователя для поиска
      * @return ResponseEntity с данными пользователя и соответствующим HTTP статусом:
-     *         <ul>
-     *           <li>200 OK - пользователь найден и возвращен</li>
-     *           <li>404 Not Found - пользователь с указанным username не существует</li>
-     *         </ul>
+     * <ul>
+     *   <li>200 OK - пользователь найден и возвращен</li>
+     *   <li>404 Not Found - пользователь с указанным username не существует</li>
+     * </ul>
      */
     @GetMapping("/username/{username}")
-    public ResponseEntity<User> getUserByUsername(@PathVariable("username") String username) {
+    public ResponseEntity<UserDto> getUserByUsername(@PathVariable("username") String username) {
         Optional<User> user = userRepository.findByUsername(username);
 
         if (user.isPresent()) {
-            return new ResponseEntity<>(user.get(), HttpStatus.OK);
+            UserDto userDto = UserDto.fromEntity(user.get());
+            return new ResponseEntity<>(userDto, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
@@ -145,16 +155,15 @@ public class UserRestController {
      *
      * @param user объект пользователя с данными для создания (передается в теле запроса)
      * @return ResponseEntity с созданным пользователем и соответствующим HTTP статусом:
-     *         <ul>
-     *           <li>201 Created - пользователь успешно создан</li>
-     *           <li>409 Conflict - пользователь с таким username или email уже существует</li>
-     *           <li>500 Internal Server Error - произошла ошибка при создании пользователя</li>
-     *         </ul>
+     * <ul>
+     *   <li>201 Created - пользователь успешно создан</li>
+     *   <li>409 Conflict - пользователь с таким username или email уже существует</li>
+     *   <li>500 Internal Server Error - произошла ошибка при создании пользователя</li>
+     * </ul>
      */
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user) {
+    public ResponseEntity<UserDto> createUser(@RequestBody User user) {
         try {
-            // Проверяем уникальность username и email с помощью оптимизированных методов
             boolean usernameExists = userRepository.existsByUsername(user.getUsername());
             boolean emailExists = userRepository.existsByEmail(user.getEmail());
 
@@ -167,7 +176,8 @@ public class UserRestController {
             }
 
             User newUser = userRepository.save(user);
-            return new ResponseEntity<>(newUser, HttpStatus.CREATED);
+            UserDto userDto = UserDto.fromEntity(newUser);
+            return new ResponseEntity<>(userDto, HttpStatus.CREATED);
         } catch (Exception e) {
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -186,16 +196,16 @@ public class UserRestController {
      * что позволяет клиентам отправлять только изменяемые поля без необходимости
      * передачи полного объекта.
      *
-     * @param id уникальный идентификатор пользователя для обновления
+     * @param id   уникальный идентификатор пользователя для обновления
      * @param user объект с новыми данными пользователя (передается в теле запроса)
      * @return ResponseEntity с обновленным пользователем и соответствующим HTTP статусом:
-     *         <ul>
-     *           <li>200 OK - пользователь успешно обновлен</li>
-     *           <li>404 Not Found - пользователь с указанным ID не существует</li>
-     *         </ul>
+     * <ul>
+     *   <li>200 OK - пользователь успешно обновлен</li>
+     *   <li>404 Not Found - пользователь с указанным ID не существует</li>
+     * </ul>
      */
     @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable("id") Integer id, @RequestBody User user) {
+    public ResponseEntity<UserDto> updateUser(@PathVariable("id") Integer id, @RequestBody User user) {
         Optional<User> userData = userRepository.findById(id);
 
         if (userData.isPresent()) {
@@ -226,8 +236,9 @@ public class UserRestController {
             if (user.getLastSeen() != null) {
                 existingUser.setLastSeen(user.getLastSeen());
             }
-
-            return new ResponseEntity<>(userRepository.save(existingUser), HttpStatus.OK);
+            User updatedUser = userRepository.save(existingUser);
+            UserDto userDto = UserDto.fromEntity(updatedUser);
+            return new ResponseEntity<>(userDto, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
@@ -243,11 +254,11 @@ public class UserRestController {
      *
      * @param id уникальный идентификатор пользователя для удаления
      * @return ResponseEntity с соответствующим HTTP статусом:
-     *         <ul>
-     *           <li>204 No Content - пользователь успешно удален</li>
-     *           <li>404 Not Found - пользователь с указанным ID не существует</li>
-     *           <li>500 Internal Server Error - произошла ошибка при удалении</li>
-     *         </ul>
+     * <ul>
+     *   <li>204 No Content - пользователь успешно удален</li>
+     *   <li>404 Not Found - пользователь с указанным ID не существует</li>
+     *   <li>500 Internal Server Error - произошла ошибка при удалении</li>
+     * </ul>
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<HttpStatus> deleteUser(@PathVariable("id") Integer id) {
@@ -272,10 +283,10 @@ public class UserRestController {
      * для административной статистики или отображения в интерфейсе.
      *
      * @return ResponseEntity с количеством пользователей и соответствующим HTTP статусом:
-     *         <ul>
-     *           <li>200 OK - количество успешно получено</li>
-     *           <li>500 Internal Server Error - произошла ошибка при подсчете</li>
-     *         </ul>
+     * <ul>
+     *   <li>200 OK - количество успешно получено</li>
+     *   <li>500 Internal Server Error - произошла ошибка при подсчете</li>
+     * </ul>
      */
     @GetMapping("/count")
     public ResponseEntity<Long> getUsersCount() {

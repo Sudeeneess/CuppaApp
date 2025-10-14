@@ -22,8 +22,8 @@ import java.time.LocalDateTime;
         @Index(name = "idx_chat_rooms_last_message_at",
                 columnList = "last_message_at DESC")
 })
-@Entity // Помечает класс как JPA сущность
-@Data // Аннотация Lombok - автоматически генерирует геттеры, сеттеры, toString, equals и hashCode
+@Entity
+@Data
 public class ChatRoom {
 
     /**
