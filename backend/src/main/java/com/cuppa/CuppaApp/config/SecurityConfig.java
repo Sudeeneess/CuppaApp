@@ -85,6 +85,7 @@ public class SecurityConfig {
      *   <li>Настройка stateless сессий (без сохранения состояния)</li>
      *   <li>Определение правил доступа к эндпоинтам</li>
      *   <li>Добавление JWT-фильтра аутентификации</li>
+     *   <li>Разрешение Swagger без аутентификации</li>
      * </ul>
      * </p>
      *
@@ -98,6 +99,13 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/webjars/**",
+                                "/v3/**"
+                        ).permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/users/me").authenticated()
                         .requestMatchers("/api/chat-rooms/**").authenticated()
