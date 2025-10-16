@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тестирование Cuppa Messenger API</title>
+    <title>Cuppa Messenger - Real-time Chat</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
         * {
-            box-sizing: border-box;
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 10px;
         }
 
         .container {
@@ -31,90 +32,61 @@
         .header {
             background: #2c3e50;
             color: white;
-            padding: 30px;
+            padding: 20px;
             text-align: center;
         }
 
         .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            font-size: 2em;
+            margin-bottom: 5px;
         }
 
-        .header .subtitle {
-            font-size: 1.1em;
-            opacity: 0.8;
-        }
-
-        .main-content {
+        .dashboard {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 0;
+            gap: 15px;
+            padding: 20px;
         }
 
-        .left-panel {
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
             background: #f8f9fa;
-            padding: 30px;
-            border-right: 1px solid #e9ecef;
-        }
-
-        .right-panel {
-            background: white;
-            padding: 30px;
-        }
-
-        .section {
-            margin-bottom: 30px;
-            padding: 25px;
-            background: white;
             border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-            border-left: 4px solid #3498db;
+            padding: 20px;
+            border: 1px solid #e9ecef;
         }
 
-        .section.auth {
-            border-left-color: #2ecc71;
-        }
-
-        .section.chat {
-            border-left-color: #e74c3c;
-        }
-
-        .section.user {
-            border-left-color: #f39c12;
-        }
-
-        .section-title {
-            font-size: 1.3em;
-            font-weight: 600;
+        .panel h2 {
             color: #2c3e50;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .section-title i {
+            margin-bottom: 15px;
             font-size: 1.2em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         label {
             display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #34495e;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9em;
         }
 
-        input, select {
+        input, select, button {
             width: 100%;
-            padding: 12px 15px;
+            padding: 10px 12px;
             border: 2px solid #e9ecef;
-            border-radius: 8px;
+            border-radius: 6px;
             font-size: 14px;
-            transition: border-color 0.3s;
         }
 
         input:focus, select:focus {
@@ -122,376 +94,294 @@
             border-color: #3498db;
         }
 
-        .btn {
-            padding: 12px 25px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-right: 10px;
-            margin-bottom: 10px;
-        }
-
-        .btn-primary {
+        button {
             background: #3498db;
             color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 8px;
+            padding: 10px;
         }
 
-        .btn-primary:hover {
+        button:hover {
             background: #2980b9;
-            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
         }
 
         .btn-success {
             background: #27ae60;
-            color: white;
         }
 
         .btn-success:hover {
             background: #219a52;
-            transform: translateY(-2px);
-        }
-
-        .btn-warning {
-            background: #f39c12;
-            color: white;
-        }
-
-        .btn-warning:hover {
-            background: #e67e22;
-            transform: translateY(-2px);
         }
 
         .btn-danger {
             background: #e74c3c;
-            color: white;
         }
 
-        .btn-danger:hover {
-            background: #c0392b;
-            transform: translateY(-2px);
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+            font-weight: 500;
+            font-size: 0.9em;
         }
 
-        .btn-secondary {
-            background: #95a5a6;
-            color: white;
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
         }
 
-        .btn-secondary:hover {
-            background: #7f8c8d;
-            transform: translateY(-2px);
+        .messages-container {
+            height: 250px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 12px;
+            background: white;
+            margin-top: 12px;
+            font-size: 0.9em;
         }
 
-        .token-display {
-            background: #ecf0f1;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
-            border-left: 4px solid #3498db;
+        .message {
+            padding: 8px 12px;
+            margin: 6px 0;
+            border-radius: 6px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            position: relative;
         }
 
-        .token-display h4 {
-            margin-bottom: 10px;
+        .message.my-message {
+            background: #dcf8c6;
+            border-left: 4px solid #34b7f1;
+            margin-left: 20%;
+            text-align: right;
+        }
+
+        .message.other-message {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            margin-right: 20%;
+        }
+
+        .message.system {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            font-style: italic;
+            text-align: center;
+            margin: 6px 0;
+        }
+
+        .message .sender {
+            font-weight: bold;
             color: #2c3e50;
+            display: block;
+            margin-bottom: 3px;
+            font-size: 0.85em;
         }
 
-        .token-preview {
+        .message .time {
+            font-size: 0.75em;
+            color: #6c757d;
+        }
+
+        .logs {
+            background: #1a1a1a;
+            color: #00ff00;
             font-family: 'Courier New', monospace;
-            font-size: 12px;
-            word-break: break-all;
-            background: #2c3e50;
-            color: #ecf0f1;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 12px;
+            border-radius: 6px;
+            height: 150px;
+            overflow-y: auto;
+            margin-top: 12px;
+            font-size: 11px;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #e74c3c;
+        }
+
+        .status-dot.connected {
+            background: #27ae60;
+            animation: pulse 2s infinite;
         }
 
         .user-info {
-            background: #e8f6f3;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
-            border-left: 4px solid #27ae60;
-        }
-
-        .result-area {
-            background: #2c3e50;
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            min-height: 400px;
-            max-height: 500px;
-            overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-
-        .result-item {
-            margin-bottom: 15px;
-            padding: 15px;
-            border-radius: 5px;
-            border-left: 4px solid #3498db;
-        }
-
-        .result-success {
-            background: #d5f4e6;
-            color: #27ae60;
-            border-left-color: #27ae60;
-        }
-
-        .result-error {
-            background: #fadbd8;
-            color: #e74c3c;
-            border-left-color: #e74c3c;
-        }
-
-        .result-info {
-            background: #d6eaf8;
-            color: #3498db;
-            border-left-color: #3498db;
-        }
-
-        .result-warning {
-            background: #fdebd0;
-            color: #f39c12;
-            border-left-color: #f39c12;
-        }
-
-        .timestamp {
-            font-size: 11px;
-            opacity: 0.7;
-            margin-bottom: 5px;
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 6px;
+            padding: 8px;
+            margin: 8px 0;
+            font-size: 0.85em;
         }
 
         .chat-controls {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 8px;
+            margin-top: 12px;
         }
 
-        .quick-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin: 15px 0;
+        .chat-controls button {
+            margin-top: 0;
+            padding: 8px;
         }
 
-        .step-indicator {
-            background: #3498db;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-            margin-right: 10px;
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
 
-        .instructions {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 15px 0;
-            font-size: 14px;
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px dashed #6c757d;
+            border-radius: 6px;
+            padding: 8px;
+            margin: 8px 0;
+            font-size: 0.8em;
+            color: #6c757d;
         }
 
-        .instructions h4 {
-            color: #856404;
-            margin-bottom: 10px;
-        }
-
-        .instructions ol {
-            margin-left: 20px;
-        }
-
-        .instructions li {
-            margin-bottom: 5px;
+        .message-id {
+            font-size: 0.7em;
+            color: #999;
+            position: absolute;
+            right: 8px;
+            top: 4px;
         }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <h1>☕ Cuppa Messenger</h1>
-        <div class="subtitle">Тестирование REST API</div>
+        <h1>🚀 Cuppa Messenger</h1>
+        <div class="subtitle">Real-time Multi-User Chat Test</div>
     </div>
 
-    <div class="main-content">
-        <!-- ЛЕВАЯ ПАНЕЛЬ - УПРАВЛЕНИЕ -->
-        <div class="left-panel">
-            <!-- СЕКЦИЯ 1: АУТЕНТИФИКАЦИЯ -->
-            <div class="section auth">
-                <div class="section-title">
-                    <span class="step-indicator">1</span>
-                    🔐 Аутентификация пользователей
+    <div class="dashboard">
+        <!-- Левая колонка -->
+        <div class="left-column">
+            <!-- WebSocket Connection -->
+            <div class="panel">
+                <h2>🔗 WebSocket Connection</h2>
+                <div class="connection-status">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="connectionStatus">Disconnected</span>
                 </div>
+                <button onclick="connectWebSocket()" id="connectBtn">Connect to WebSocket</button>
+                <button onclick="disconnectWebSocket()" class="btn-danger" id="disconnectBtn" disabled>Disconnect</button>
 
-                <div class="instructions">
-                    <h4>📋 Инструкция:</h4>
-                    <ol>
-                        <li>Сначала зарегистрируйте 2-3 тестовых пользователя</li>
-                        <li>Запомните их ID (появятся в результатах)</li>
-                        <li>Войдите под одним из пользователей для работы с чатами</li>
-                    </ol>
-                </div>
-
-                <div class="form-group">
-                    <label>📝 Регистрация нового пользователя:</label>
-                    <input type="text" id="regUsername" placeholder="Имя пользователя" value="user1">
-                    <input type="email" id="regEmail" placeholder="Email" value="user1@example.com" style="margin-top: 10px;">
-                    <input type="password" id="regPassword" placeholder="Пароль" value="password123" style="margin-top: 10px;">
-                    <button class="btn btn-success" onclick="register()">
-                        ✅ Зарегистрировать пользователя
-                    </button>
-                </div>
-
-                <div class="form-group">
-                    <label>🔑 Вход в систему:</label>
-                    <input type="email" id="loginEmail" placeholder="Email" value="user1@example.com">
-                    <input type="password" id="loginPassword" placeholder="Пароль" value="password123" style="margin-top: 10px;">
-                    <button class="btn btn-primary" onclick="login()">
-                        🚀 Войти в систему
-                    </button>
-                </div>
-
-                <div class="form-group">
-                    <label>🚪 Выход из системы:</label>
-                    <div class="quick-actions">
-                        <button class="btn btn-warning" onclick="logout()">
-                            🚪 Выйти из системы
-                        </button>
-                        <button class="btn btn-secondary" onclick="clearToken()">
-                            🚫 Очистить токен
-                        </button>
-                    </div>
+                <div class="debug-info">
+                    <strong>Debug Info:</strong>
+                    <div>Subscribed: <span id="debugSubscribed">No</span></div>
+                    <div>Chat ID: <span id="debugChatId">-</span></div>
+                    <div>User ID: <span id="debugUserId">-</span></div>
+                    <div>Last Message ID: <span id="debugLastMsgId">-</span></div>
                 </div>
             </div>
 
-            <!-- СЕКЦИЯ 2: УПРАВЛЕНИЕ ЧАТАМИ -->
-            <div class="section chat">
-                <div class="section-title">
-                    <span class="step-indicator">2</span>
-                    💬 Управление чат-комнатами
-                </div>
+            <!-- Authentication -->
+            <div class="panel">
+                <h2>🔐 Authentication</h2>
 
-                <div class="instructions">
-                    <h4>💡 Сначала выполните Шаг 1 (войдите в систему)</h4>
+                <div id="userInfo" class="user-info" style="display: none;">
+                    <strong>👤 Current User:</strong> <span id="currentUserName">Unknown</span>
+                    <br><strong>🆔 User ID:</strong> <span id="currentUserId">-</span>
                 </div>
 
                 <div class="form-group">
-                    <label>🆕 Создать новую чат-комнату:</label>
-                    <input type="text" id="chatName" placeholder="Название чата" value="Технические обсуждения">
-                    <select id="chatType" style="margin-top: 10px;">
-                        <option value="PRIVATE">Приватный чат (2 человека)</option>
-                        <option value="GROUP" selected>Групповой чат</option>
-                        <option value="PUBLIC">Публичный чат</option>
-                    </select>
-                    <input type="text" id="chatDescription" placeholder="Описание чата" value="Обсуждение технических вопросов" style="margin-top: 10px;">
-                    <button class="btn btn-success" onclick="createChatRoom()">
-                        ➕ Создать чат-комнату
-                    </button>
+                    <input type="text" id="regUsername" placeholder="Username for registration">
                 </div>
-
                 <div class="form-group">
-                    <label>👥 Создать приватный чат между пользователями:</label>
-                    <div class="chat-controls">
-                        <input type="number" id="user1Id" placeholder="ID пользователя 1" value="1">
-                        <input type="number" id="user2Id" placeholder="ID пользователя 2" value="2">
-                    </div>
-                    <input type="number" id="createdById" placeholder="ID создателя" value="1" style="margin-top: 10px;">
-                    <button class="btn btn-primary" onclick="createPrivateChat()">
-                        🤝 Создать приватный чат
-                    </button>
+                    <input type="email" id="regEmail" placeholder="Email for registration">
                 </div>
+                <button onclick="register()" class="btn-success">Register New User</button>
 
-                <div class="quick-actions">
-                    <button class="btn btn-primary" onclick="getAllChatRooms()">
-                        📋 Получить все чаты
-                    </button>
-                    <button class="btn btn-primary" onclick="getChatById()">
-                        🔍 Найти чат по ID
-                    </button>
-                    <input type="number" id="chatId" placeholder="ID чата" value="1" style="width: 80px;">
+                <div class="form-group" style="margin-top: 15px;">
+                    <input type="email" id="loginEmail" placeholder="Email for login">
                 </div>
-
-                <div class="quick-actions">
-                    <button class="btn btn-warning" onclick="updateChat()">
-                        ✏️ Обновить чат
-                    </button>
-                    <button class="btn btn-danger" onclick="deleteChat()">
-                        🗑️ Удалить чат
-                    </button>
-                </div>
-            </div>
-
-            <!-- СЕКЦИЯ 3: ПОИСК И ДОПОЛНИТЕЛЬНЫЕ ОПЕРАЦИИ -->
-            <div class="section">
-                <div class="section-title">
-                    <span class="step-indicator">3</span>
-                    🔍 Поиск и дополнительные операции
-                </div>
-
                 <div class="form-group">
-                    <label>Поиск чатов по названию:</label>
-                    <input type="text" id="searchName" placeholder="Введите название для поиска" value="Технические">
-                    <div class="quick-actions">
-                        <button class="btn btn-primary" onclick="searchChats()">
-                            🔎 Поиск всех чатов
-                        </button>
-                        <button class="btn btn-primary" onclick="searchGroupChats()">
-                            👥 Поиск групповых чатов
-                        </button>
-                    </div>
+                    <input type="password" id="loginPassword" placeholder="Password" value="123456">
                 </div>
-            </div>
+                <button onclick="login()">Login</button>
 
-            <!-- СЕКЦИЯ 4: ИНФОРМАЦИЯ О ТЕКУЩЕЙ СЕССИИ -->
-            <div class="section user">
-                <div class="section-title">
-                    <span class="step-indicator">4</span>
-                    👤 Информация о сессии
-                </div>
-
-                <div class="token-display" id="tokenInfo" style="display: none;">
-                    <h4>🔐 Текущий JWT токен:</h4>
-                    <div class="token-preview" id="tokenPreview"></div>
-                </div>
-
-                <div class="user-info" id="userInfo" style="display: none;">
-                    <h4>👤 Текущий пользователь:</h4>
-                    <div id="userDetails"></div>
-                </div>
-
-                <div class="quick-actions">
-                    <button class="btn btn-primary" onclick="getProfile()">
-                        👤 Получить мой профиль
-                    </button>
-                    <button class="btn btn-secondary" onclick="getAllUsers()">
-                        📊 Получить всех пользователей
-                    </button>
-                </div>
+                <div id="authStatus" class="status"></div>
             </div>
         </div>
 
-        <!-- ПРАВАЯ ПАНЕЛЬ - РЕЗУЛЬТАТЫ -->
-        <div class="right-panel">
-            <div class="section">
-                <div class="section-title">📊 Результаты тестирования</div>
-                <div class="result-area" id="result">
-                    <div class="result-item result-info">
-                        <div class="timestamp">[Система]</div>
-                        Готов к тестированию!<br><br>
-                        <strong>Рекомендуемая последовательность:</strong><br>
-                        1. Зарегистрируйте пользователей<br>
-                        2. Войдите в систему<br>
-                        3. Создайте чат-комнаты<br>
-                        4. Тестируйте остальные операции
-                    </div>
+        <!-- Правая колонка -->
+        <div class="right-column">
+            <!-- Real-time Chat -->
+            <div class="panel">
+                <h2>💭 Real-time Chat</h2>
+
+                <div class="form-group">
+                    <label>Current Chat ID:</label>
+                    <input type="number" id="currentChatId" placeholder="Chat ID" value="1">
+                </div>
+
+                <div class="chat-controls">
+                    <button onclick="subscribeToChat()">Subscribe to Chat</button>
+                    <button onclick="loadChatHistory()">Load History</button>
+                </div>
+
+                <div class="messages-container" id="messagesContainer">
+                    <div class="message system">🚀 Welcome to Cuppa Messenger!</div>
+                    <div class="message system">1. Connect to WebSocket</div>
+                    <div class="message system">2. Register/Login</div>
+                    <div class="message system">3. Subscribe to chat</div>
+                    <div class="message system">4. Start chatting!</div>
+                </div>
+
+                <div class="form-group" style="margin-top: 12px;">
+                    <input type="text" id="messageInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+                </div>
+                <button onclick="sendMessage()">Send Message</button>
+            </div>
+
+            <!-- Chat Management & Testing -->
+            <div class="panel">
+                <h2>🔧 Chat Management</h2>
+
+                <div class="form-group">
+                    <input type="text" id="chatName" placeholder="New chat name">
+                </div>
+                <div class="form-group">
+                    <select id="chatType">
+                        <option value="PRIVATE">Private</option>
+                        <option value="GROUP">Group</option>
+                        <option value="PUBLIC">Public</option>
+                    </select>
+                </div>
+
+                <div class="chat-controls">
+                    <button onclick="createChat()">Create Chat</button>
+                    <button onclick="getAllChats()">Get All Chats</button>
+                    <button onclick="getAllUsers()">Get Users</button>
+                </div>
+
+                <div class="logs" id="apiLogs">
+                    &gt; System ready...
+                    &gt; Connect WebSocket first
                 </div>
             </div>
         </div>
@@ -499,102 +389,379 @@
 </div>
 
 <script>
-    let currentToken = '';
-    let currentUserId = null;
+    // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
+    let stompClient = null;
+    let authToken = null;
     let currentUser = null;
+    let currentChatId = 1;
+    let isSubscribed = false;
+    let pendingMessages = new Set(); // Для отслеживания отправленных сообщений
+    let lastMessageId = null;
 
-    function updateTokenDisplay() {
-        const tokenInfo = document.getElementById('tokenInfo');
-        const tokenPreview = document.getElementById('tokenPreview');
-        const userInfo = document.getElementById('userInfo');
-        const userDetails = document.getElementById('userDetails');
+    // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
-        if (currentToken) {
-            tokenInfo.style.display = 'block';
-            tokenPreview.textContent = currentToken.substring(0, 50) + '...';
+    function generateUniqueEmail() {
+        const timestamp = new Date().getTime();
+        const random = Math.floor(Math.random() * 1000);
+        return `test${timestamp}${random}@example.com`;
+    }
 
-            if (currentUser) {
-                userInfo.style.display = 'block';
-                userDetails.innerHTML = `
-                    <strong>ID:</strong> ${currentUser.id}<br>
-                    <strong>Имя:</strong> ${currentUser.username}<br>
-                    <strong>Email:</strong> ${currentUser.email}<br>
-                    <strong>Онлайн:</strong> ${currentUser.is_online ? 'Да' : 'Нет'}
-                `;
+    function log(message) {
+        const logs = document.getElementById('apiLogs');
+        logs.innerHTML += `&gt; ${new Date().toLocaleTimeString()}: ${message}\n`;
+        logs.scrollTop = logs.scrollHeight;
+        console.log(message);
+    }
+
+    function updateDebugInfo() {
+        document.getElementById('debugSubscribed').textContent = isSubscribed ? 'Yes' : 'No';
+        document.getElementById('debugChatId').textContent = currentChatId;
+        document.getElementById('debugUserId').textContent = currentUser ? (currentUser.userId || currentUser.id) : '-';
+        document.getElementById('debugLastMsgId').textContent = lastMessageId || '-';
+    }
+
+    async function makeAuthRequest(url, options = {}) {
+        const defaultOptions = {
+            headers: {
+                'Content-Type': 'application/json',
             }
-        } else {
-            tokenInfo.style.display = 'none';
-            userInfo.style.display = 'none';
+        };
+
+        if (authToken) {
+            defaultOptions.headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
+        const finalOptions = { ...defaultOptions, ...options };
+
+        try {
+            const response = await fetch(url, finalOptions);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            log('Request error: ' + error.message);
+            throw error;
         }
     }
 
-    function showResult(message, type = 'info') {
-        const result = document.getElementById('result');
-        const timestamp = new Date().toLocaleTimeString();
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `result-item result-${type}`;
-        messageDiv.innerHTML = `<div class="timestamp">[${timestamp}]</div>${message}`;
-        result.insertBefore(messageDiv, result.firstChild);
-
-        // Автопрокрутка к новым сообщениям
-        result.scrollTop = 0;
+    function updateUserInfo() {
+        if (currentUser) {
+            document.getElementById('userInfo').style.display = 'block';
+            document.getElementById('currentUserName').textContent = currentUser.username || 'Unknown';
+            document.getElementById('currentUserId').textContent = currentUser.userId || currentUser.id || '-';
+            document.getElementById('debugUserId').textContent = currentUser.userId || currentUser.id;
+        }
+        updateDebugInfo();
     }
 
-    function getAuthHeaders() {
-        return {
-            'Authorization': 'Bearer ' + currentToken,
-            'Content-Type': 'application/json'
+    // ==================== WEBSOCKET ФУНКЦИИ ====================
+
+    function connectWebSocket() {
+        try {
+            const socket = new SockJS('/ws-chat');
+            stompClient = Stomp.over(socket);
+
+            // Отключаем дебаг логирование STOMP
+            stompClient.debug = null;
+
+            stompClient.connect({}, function(frame) {
+                updateConnectionStatus(true, 'Connected to WebSocket');
+                log('✅ WebSocket connected successfully');
+                log('⚠️ Now subscribe to a chat using the button');
+                updateDebugInfo();
+
+            }, function(error) {
+                updateConnectionStatus(false, 'WebSocket connection failed');
+                log('❌ WebSocket error: ' + error);
+            });
+
+        } catch (error) {
+            log('WebSocket connection error: ' + error);
+        }
+    }
+
+    function disconnectWebSocket() {
+        if (stompClient !== null) {
+            stompClient.disconnect();
+            updateConnectionStatus(false, 'Disconnected');
+            isSubscribed = false;
+            pendingMessages.clear();
+            log('🔌 WebSocket disconnected');
+            updateDebugInfo();
+        }
+    }
+
+    function updateConnectionStatus(connected, message) {
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('connectionStatus');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+
+        if (connected) {
+            statusDot.className = 'status-dot connected';
+            statusText.textContent = message;
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
+        } else {
+            statusDot.className = 'status-dot';
+            statusText.textContent = message;
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+        }
+    }
+
+    function subscribeToChat() {
+        if (!stompClient || !stompClient.connected) {
+            log('❌ Please connect to WebSocket first!');
+            return;
+        }
+
+        const chatId = document.getElementById('currentChatId').value;
+        currentChatId = chatId;
+
+        // Отписываемся от предыдущих подписок
+        if (isSubscribed) {
+            stompClient.unsubscribe('current-chat');
+            log('Unsubscribed from previous chat');
+        }
+
+        // Подписываемся на новые сообщения
+        const subscription = stompClient.subscribe('/topic/chat/' + chatId, function(message) {
+            try {
+                const receivedMessage = JSON.parse(message.body);
+                console.log('📨 Received WebSocket message:', receivedMessage);
+
+                // Проверяем, не наше ли это сообщение (чтобы избежать дублирования)
+                const currentUserId = currentUser ? (currentUser.userId || currentUser.id) : null;
+                const isMyMessage = currentUserId && receivedMessage.senderId == currentUserId;
+
+                if (isMyMessage) {
+                    // Это наше сообщение - проверяем, не было ли оно уже показано
+                    const messageKey = `${receivedMessage.senderId}_${receivedMessage.content}_${receivedMessage.sentAt}`;
+                    if (pendingMessages.has(messageKey)) {
+                        console.log('⚠️ Ignoring duplicate own message');
+                        pendingMessages.delete(messageKey); // Удаляем из ожидающих
+                        return; // Не показываем дубликат
+                    }
+                }
+
+                // Показываем сообщение
+                displayMessage(receivedMessage);
+                lastMessageId = receivedMessage.id;
+                updateDebugInfo();
+
+                log(`📨 Received: "${receivedMessage.content}" from User ${receivedMessage.senderId}`);
+
+            } catch (error) {
+                console.error('Error parsing message:', error);
+                log('Error parsing WebSocket message');
+            }
+        });
+
+        // Сохраняем ссылку на подписку для отписки
+        subscription.id = 'current-chat';
+        isSubscribed = true;
+
+        log(`✅ Subscribed to chat ${chatId}`);
+        log(`📡 Listening on /topic/chat/${chatId}`);
+        updateDebugInfo();
+    }
+
+    // ==================== ФУНКЦИИ ОТОБРАЖЕНИЯ СООБЩЕНИЙ ====================
+
+    function displayMessage(message) {
+        const messagesContainer = document.getElementById('messagesContainer');
+
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message';
+
+        // Определяем, наше ли это сообщение
+        const currentUserId = currentUser ? (currentUser.userId || currentUser.id) : null;
+        const isMyMessage = currentUserId && message.senderId == currentUserId;
+
+        if (isMyMessage) {
+            messageElement.classList.add('my-message');
+        } else {
+            messageElement.classList.add('other-message');
+        }
+
+        const time = new Date(message.sentAt || new Date()).toLocaleTimeString();
+        const senderName = isMyMessage ? 'You' : (message.senderName || `User ${message.senderId}`);
+
+        messageElement.innerHTML = `
+            ${message.id ? `<span class="message-id">#${message.id}</span>` : ''}
+            <span class="sender">${senderName}</span>
+            <div>${message.content}</div>
+            <span class="time">${time}</span>
+        `;
+
+        messagesContainer.appendChild(messageElement);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // ==================== ФУНКЦИИ ЧАТА ====================
+
+    function sendMessage() {
+        if (!stompClient || !stompClient.connected) {
+            alert('❌ Please connect to WebSocket first!');
+            return;
+        }
+
+        if (!currentUser) {
+            alert('❌ Please login first!');
+            return;
+        }
+
+        if (!isSubscribed) {
+            alert('❌ Please subscribe to a chat first!');
+            return;
+        }
+
+        const chatId = document.getElementById('currentChatId').value;
+        const content = document.getElementById('messageInput').value;
+
+        if (!content.trim()) {
+            alert('❌ Please enter a message!');
+            return;
+        }
+
+        const currentUserId = currentUser.userId || currentUser.id;
+        const timestamp = new Date().getTime();
+
+        const message = {
+            chatRoomId: parseInt(chatId),
+            senderId: parseInt(currentUserId),
+            content: content.trim(),
+            messageType: 'TEXT'
         };
+
+        console.log('📤 Sending WebSocket message:', message);
+
+        // Создаем уникальный ключ для сообщения
+        const messageKey = `${currentUserId}_${content}_${timestamp}`;
+        pendingMessages.add(messageKey);
+
+        // НЕ показываем сообщение сразу - ждем ответа от сервера
+        // Это предотвратит дублирование
+
+        // Отправляем сообщение через WebSocket
+        stompClient.send("/app/chat/" + chatId + "/send", {}, JSON.stringify(message));
+        document.getElementById('messageInput').value = '';
+        log(`📤 Sent: "${content}" to chat ${chatId}`);
+
+        // Автоматически удаляем ключ через 5 секунд (на случай проблем)
+        setTimeout(() => {
+            if (pendingMessages.has(messageKey)) {
+                pendingMessages.delete(messageKey);
+                console.log('Cleaned up pending message key:', messageKey);
+            }
+        }, 5000);
     }
 
-    async function register() {
-        const username = document.getElementById('regUsername').value;
-        const email = document.getElementById('regEmail').value;
-        const password = document.getElementById('regPassword').value;
+    async function loadChatHistory() {
+        const chatId = document.getElementById('currentChatId').value;
 
-        if (!username || !email || !password) {
-            showResult('❌ Пожалуйста, заполните все поля', 'error');
+        if (!authToken) {
+            log('Please login first to load chat history');
             return;
         }
 
         try {
-            showResult('📤 Отправка запроса на регистрацию...', 'info');
+            const messages = await makeAuthRequest(`/api/chat-rooms/${chatId}/messages`);
+            const messagesContainer = document.getElementById('messagesContainer');
 
+            // Очищаем контейнер
+            messagesContainer.innerHTML = '';
+
+            // Добавляем системное сообщение
+            const systemMsg = document.createElement('div');
+            systemMsg.className = 'message system';
+            systemMsg.textContent = `📚 History of chat ${chatId}`;
+            messagesContainer.appendChild(systemMsg);
+
+            // Загружаем историю сообщений
+            if (messages.content) {
+                // Если это Page объект
+                messages.content.reverse().forEach(message => {
+                    displayMessage(message);
+                });
+                log(`Loaded ${messages.content.length} messages from chat ${chatId}`);
+            } else if (Array.isArray(messages)) {
+                // Если это массив
+                messages.reverse().forEach(message => {
+                    displayMessage(message);
+                });
+                log(`Loaded ${messages.length} messages from chat ${chatId}`);
+            }
+
+        } catch (error) {
+            log('Could not load chat history');
+        }
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    }
+
+    // ==================== АУТЕНТИФИКАЦИЯ ====================
+
+    async function register() {
+        const username = document.getElementById('regUsername').value;
+        let email = document.getElementById('regEmail').value;
+        const password = '123456';
+
+        if (!username) {
+            alert('❌ Please enter username!');
+            return;
+        }
+
+        if (!email) {
+            email = generateUniqueEmail();
+            document.getElementById('regEmail').value = email;
+        }
+
+        try {
             const response = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    username,
-                    email,
-                    password,
+                    username: username,
+                    email: email,
+                    password: password,
                     first_name: 'Test',
                     last_name: 'User'
                 })
             });
 
-            const data = await response.json();
             if (response.ok) {
-                currentToken = data.accessToken;
-                currentUserId = data.userId;
-                currentUser = {
-                    id: data.userId,
-                    username: data.username,
-                    email: data.email,
-                    is_online: true
-                };
-                updateTokenDisplay();
-                showResult(`✅ <strong>РЕГИСТРАЦИЯ УСПЕШНА!</strong><br>
-                👤 ID пользователя: <strong>${data.userId}</strong><br>
-                📛 Имя: ${data.username}<br>
-                📧 Email: ${data.email}<br>
-                🔐 Токен получен и сохранен`, 'success');
+                const data = await response.json();
+                authToken = data.accessToken || data.token;
+                currentUser = data.user || data;
+
+                if (!currentUser.userId && currentUser.id) {
+                    currentUser.userId = currentUser.id;
+                }
+
+                log(`✅ Registered: ${currentUser.username} (ID: ${currentUser.userId})`);
+
+                document.getElementById('authStatus').innerHTML =
+                    `<div class="status connected">✅ Registered as ${currentUser.username}</div>`;
+
+                document.getElementById('loginEmail').value = email;
+
+                updateUserInfo();
+
             } else {
-                showResult(`❌ Ошибка регистрации: ${JSON.stringify(data)}`, 'error');
+                const errorText = await response.text();
+                log('Registration failed: ' + errorText);
             }
         } catch (error) {
-            showResult(`❌ Ошибка: ${error.message}`, 'error');
+            log('Registration error: ' + error);
         }
     }
 
@@ -602,421 +769,127 @@
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
 
-        if (!email || !password) {
-            showResult('❌ Пожалуйста, введите email и пароль', 'error');
+        if (!email) {
+            alert('❌ Please enter email!');
             return;
         }
 
         try {
-            showResult('📤 Отправка запроса на вход...', 'info');
-
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({
+                    email: email,
+                    password: password
+                })
             });
 
-            const data = await response.json();
             if (response.ok) {
-                currentToken = data.accessToken;
-                currentUserId = data.userId;
-                currentUser = {
-                    id: data.userId,
-                    username: data.username,
-                    email: data.email,
-                    is_online: true
-                };
-                updateTokenDisplay();
-                showResult(`✅ <strong>ВХОД ВЫПОЛНЕН!</strong><br>
-                👋 Добро пожаловать, <strong>${data.username}!</strong><br>
-                👤 ID пользователя: <strong>${data.userId}</strong><br>
-                🔐 Токен получен и сохранен`, 'success');
+                const data = await response.json();
+                authToken = data.accessToken || data.token;
+                currentUser = data.user || data;
+
+                if (!currentUser.userId && currentUser.id) {
+                    currentUser.userId = currentUser.id;
+                }
+
+                document.getElementById('authStatus').innerHTML =
+                    `<div class="status connected">✅ Logged in as ${currentUser.username}</div>`;
+                log(`🔑 Logged in: ${currentUser.username}`);
+
+                updateUserInfo();
+
             } else {
-                showResult(`❌ Ошибка входа: ${JSON.stringify(data)}`, 'error');
+                document.getElementById('authStatus').innerHTML =
+                    `<div class="status error">❌ Login failed</div>`;
+                log('Login failed');
             }
         } catch (error) {
-            showResult(`❌ Ошибка: ${error.message}`, 'error');
+            log('Login error: ' + error);
         }
     }
 
-    // 🔥 НОВАЯ ФУНКЦИЯ: LOGOUT
-    async function logout() {
-        if (!currentToken) {
-            showResult('❌ Нет активного токена. Сначала войдите в систему.', 'error');
-            return;
-        }
+    // ==================== УПРАВЛЕНИЕ ЧАТАМИ ====================
 
-        try {
-            showResult('🚪 Отправка запроса на выход из системы...', 'info');
-
-            const response = await fetch('/api/auth/logout', {
-                method: 'POST',
-                headers: getAuthHeaders()
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                currentToken = '';
-                currentUserId = null;
-                currentUser = null;
-                updateTokenDisplay();
-
-                showResult(`✅ <strong>ВЫХОД ВЫПОЛНЕН УСПЕШНО!</strong><br>
-                📝 Сообщение: ${data.message}<br>
-                ⏰ Время: ${data.timestamp}<br>
-                🔐 Токен удален`, 'success');
-            } else {
-                showResult(`❌ Ошибка выхода: ${JSON.stringify(data)}`, 'error');
-            }
-        } catch (error) {
-            showResult(`❌ Ошибка при выходе: ${error.message}`, 'error');
-        }
-    }
-
-    async function createChatRoom() {
-        if (!currentToken) {
-            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
-            return;
-        }
-
+    async function createChat() {
         const name = document.getElementById('chatName').value;
         const type = document.getElementById('chatType').value;
-        const description = document.getElementById('chatDescription').value;
 
-        if (!name) {
-            showResult('❌ Пожалуйста, введите название чата', 'error');
+        if (!name.trim()) {
+            alert('❌ Please enter a chat name!');
+            return;
+        }
+
+        if (!authToken) {
+            alert('❌ Please login first!');
             return;
         }
 
         try {
-            showResult('📤 Создание чат-комнаты...', 'info');
-
-            const response = await fetch('/api/chat-rooms', {
+            const chat = await makeAuthRequest('/api/chat-rooms', {
                 method: 'POST',
-                headers: getAuthHeaders(),
                 body: JSON.stringify({
-                    name,
-                    type,
-                    description,
-                    maxParticipants: type === 'PRIVATE' ? 2 : 10
+                    name: name,
+                    type: type,
+                    description: 'Test chat from dashboard'
                 })
             });
 
-            const data = await response.json();
-            if (response.ok) {
-                showResult(`✅ <strong>ЧАТ-КОМНАТА СОЗДАНА!</strong><br>
-                🆔 ID: <strong>${data.id}</strong><br>
-                📛 Название: ${data.name}<br>
-                🏷️ Тип: ${data.type}<br>
-                📝 Описание: ${data.description}<br>
-                ✅ Активна: ${data.isActive ? 'Да' : 'Нет'}`, 'success');
+            log(`✅ Chat created: "${chat.name}" (ID: ${chat.id})`);
+            document.getElementById('chatName').value = '';
+            document.getElementById('currentChatId').value = chat.id;
+            currentChatId = chat.id;
+            updateDebugInfo();
+
+        } catch (error) {
+            log('Create chat error: ' + error.message);
+        }
+    }
+
+    async function getAllChats() {
+        try {
+            const chats = await makeAuthRequest('/api/chat-rooms');
+            log(`Found ${chats.length} chat rooms:`);
+            if (chats.length > 0) {
+                chats.forEach(chat => {
+                    log(`   "${chat.name}" (ID: ${chat.id}) - ${chat.type}`);
+                });
             } else {
-                showResult(`❌ Ошибка создания чата: ${JSON.stringify(data)}`, 'error');
+                log('No chat rooms found');
             }
         } catch (error) {
-            showResult(`❌ Ошибка: ${error.message}`, 'error');
-        }
-    }
-
-    async function getAllChatRooms() {
-        if (!currentToken) {
-            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
-            return;
-        }
-
-        try {
-            showResult('📥 Получение списка всех чатов...', 'info');
-
-            const response = await fetch('/api/chat-rooms', {
-                method: 'GET',
-                headers: getAuthHeaders()
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-            showResult(`📊 <strong>ВСЕ ЧАТ-КОМНАТЫ (${data.length} шт.):</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
-        } catch (error) {
-            showResult(`❌ Ошибка: ${error.message}`, 'error');
-        }
-    }
-
-    async function getChatById() {
-        if (!currentToken) {
-            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
-            return;
-        }
-
-        const chatId = document.getElementById('chatId').value;
-        if (!chatId) {
-            showResult('❌ Пожалуйста, введите ID чата', 'error');
-            return;
-        }
-
-        try {
-            showResult(`🔍 Поиск чата с ID: ${chatId}...`, 'info');
-
-            const response = await fetch(`/api/chat-rooms/${chatId}`, {
-                method: 'GET',
-                headers: getAuthHeaders()
-            });
-
-            if (response.status === 404) {
-                showResult(`❌ Чат с ID ${chatId} не найден`, 'error');
-                return;
-            }
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-            showResult(`✅ <strong>ИНФОРМАЦИЯ О ЧАТЕ:</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
-        } catch (error) {
-            showResult(`❌ Ошибка: ${error.message}`, 'error');
-        }
-    }
-
-    async function createPrivateChat() {
-        if (!currentToken) {
-            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
-            return;
-        }
-
-        const user1Id = document.getElementById('user1Id').value;
-        const user2Id = document.getElementById('user2Id').value;
-        const createdById = document.getElementById('createdById').value;
-
-        if (!user1Id || !user2Id || !createdById) {
-            showResult('❌ Пожалуйста, заполните все ID пользователей', 'error');
-            return;
-        }
-
-        try {
-            showResult('🤝 Создание приватного чата...', 'info');
-
-            const response = await fetch(`/api/chat-rooms/private?user1Id=${user1Id}&user2Id=${user2Id}&createdBy=${createdById}`, {
-                method: 'POST',
-                headers: getAuthHeaders()
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                showResult(`✅ <strong>ПРИВАТНЫЙ ЧАТ СОЗДАН/НАЙДЕН!</strong><br>
-                🆔 ID: <strong>${data.id}</strong><br>
-                🏷️ Тип: ${data.type}<br>
-                👤 Создатель: ${createdById}`, 'success');
-            } else {
-                showResult(`❌ Ошибка создания приватного чата: ${JSON.stringify(data)}`, 'error');
-            }
-        } catch (error) {
-            showResult(`❌ Ошибка: ${error.message}`, 'error');
-        }
-    }
-
-    async function searchChats() {
-        if (!currentToken) {
-            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
-            return;
-        }
-
-        const searchName = document.getElementById('searchName').value;
-        if (!searchName) {
-            showResult('❌ Пожалуйста, введите поисковый запрос', 'error');
-            return;
-        }
-
-        try {
-            showResult(`🔍 Поиск чатов по названию: "${searchName}"...`, 'info');
-
-            const response = await fetch(`/api/chat-rooms/search?name=${encodeURIComponent(searchName)}`, {
-                method: 'GET',
-                headers: getAuthHeaders()
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-            showResult(`🔍 <strong>РЕЗУЛЬТАТЫ ПОИСКА (${data.length} найдено):</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
-        } catch (error) {
-            showResult(`❌ Ошибка: ${error.message}`, 'error');
-        }
-    }
-
-    async function searchGroupChats() {
-        if (!currentToken) {
-            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
-            return;
-        }
-
-        const searchName = document.getElementById('searchName').value;
-        if (!searchName) {
-            showResult('❌ Пожалуйста, введите поисковый запрос', 'error');
-            return;
-        }
-
-        try {
-            showResult(`👥 Поиск групповых чатов: "${searchName}"...`, 'info');
-
-            const response = await fetch(`/api/chat-rooms/search/group?name=${encodeURIComponent(searchName)}`, {
-                method: 'GET',
-                headers: getAuthHeaders()
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-            showResult(`👥 <strong>ГРУППОВЫЕ ЧАТЫ (${data.length} найдено):</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
-        } catch (error) {
-            showResult(`❌ Ошибка: ${error.message}`, 'error');
-        }
-    }
-
-    async function updateChat() {
-        if (!currentToken) {
-            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
-            return;
-        }
-
-        const chatId = document.getElementById('chatId').value;
-        if (!chatId) {
-            showResult('❌ Пожалуйста, введите ID чата', 'error');
-            return;
-        }
-
-        try {
-            showResult(`✏️ Обновление чата ${chatId}...`, 'info');
-
-            const response = await fetch(`/api/chat-rooms/${chatId}`, {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({
-                    name: `Обновленный чат ${Date.now()}`,
-                    description: 'Этот чат был обновлен через API'
-                })
-            });
-
-            const data = await response.json();
-            if (response.ok) {
-                showResult(`✅ <strong>ЧАТ ОБНОВЛЕН!</strong><br>
-                🆔 ID: ${data.id}<br>
-                📛 Новое название: ${data.name}<br>
-                📝 Описание: ${data.description}`, 'success');
-            } else {
-                showResult(`❌ Ошибка обновления чата: ${JSON.stringify(data)}`, 'error');
-            }
-        } catch (error) {
-            showResult(`❌ Ошибка: ${error.message}`, 'error');
-        }
-    }
-
-    async function deleteChat() {
-        if (!currentToken) {
-            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
-            return;
-        }
-
-        const chatId = document.getElementById('chatId').value;
-        if (!chatId) {
-            showResult('❌ Пожалуйста, введите ID чата', 'error');
-            return;
-        }
-
-        if (!confirm(`Вы уверены, что хотите удалить чат ${chatId}?`)) {
-            return;
-        }
-
-        try {
-            showResult(`🗑️ Удаление чата ${chatId}...`, 'warning');
-
-            const response = await fetch(`/api/chat-rooms/${chatId}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders()
-            });
-
-            if (response.ok) {
-                showResult(`✅ <strong>ЧАТ ${chatId} УДАЛЕН (мягкое удаление)</strong>`, 'success');
-            } else {
-                throw new Error(`HTTP ${response.status}`);
-            }
-        } catch (error) {
-            showResult(`❌ Ошибка: ${error.message}`, 'error');
-        }
-    }
-
-    async function getProfile() {
-        if (!currentToken) {
-            showResult('❌ Пожалуйста, сначала войдите в систему', 'error');
-            return;
-        }
-
-        try {
-            showResult('👤 Запрос профиля пользователя...', 'info');
-
-            const response = await fetch('/api/users/me', {
-                method: 'GET',
-                headers: getAuthHeaders()
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-            }
-
-            const data = await response.json();
-            currentUser = data;
-            updateTokenDisplay();
-            showResult(`✅ <strong>ПРОФИЛЬ ПОЛУЧЕН!</strong><br>
-            🆔 ID: ${data.id}<br>
-            📛 Имя: ${data.username}<br>
-            📧 Email: ${data.email}<br>
-            🟢 Онлайн: ${data.is_online ? 'Да' : 'Нет'}<br>
-            ⏰ Последний раз онлайн: ${new Date(data.last_seen).toLocaleString()}`, 'success');
-
-        } catch (error) {
-            showResult(`❌ Ошибка получения профиля: ${error.message}`, 'error');
+            log('Get chats error: ' + error.message);
         }
     }
 
     async function getAllUsers() {
         try {
-            showResult('📊 Получение списка всех пользователей...', 'info');
-
-            const response = await fetch('/api/admin/users', {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+            const users = await makeAuthRequest('/api/admin/users');
+            log(`Found ${users.length} users`);
+            users.forEach(user => {
+                log(`   ${user.username} (ID: ${user.id})`);
             });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-            showResult(`📊 <strong>ВСЕ ПОЛЬЗОВАТЕЛИ (${data.length} всего):</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
         } catch (error) {
-            showResult(`❌ Ошибка получения пользователей: ${error.message}`, 'error');
+            log('Get users error: ' + error.message);
         }
     }
 
-    function clearToken() {
-        currentToken = '';
-        currentUserId = null;
-        currentUser = null;
-        updateTokenDisplay();
-        showResult('🔐 Токен очищен. Пожалуйста, войдите снова для доступа к защищенным endpoint.', 'info');
-    }
+    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 
-    // Инициализация
-    updateTokenDisplay();
+    log('🚀 Cuppa Messenger initialized');
+    log('💡 Instructions:');
+    log('1. Connect WebSocket');
+    log('2. Register/Login');
+    log('3. Subscribe to chat');
+    log('4. Send messages!');
+    log('💡 Open in TWO browser tabs for testing!');
+
+    window.onload = function() {
+        document.getElementById('regEmail').value = generateUniqueEmail();
+    };
+
 </script>
 </body>
 </html>

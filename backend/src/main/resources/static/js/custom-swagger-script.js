@@ -6,9 +6,8 @@ class SwaggerCleaner {
     init() {
         console.log('CLEANING ACTIVATED!');
         this.killAllWhiteBackgrounds();
-        this.killAllSchemas();
-        this.setupAggressiveObserver();
         this.forceDarkMode();
+        this.setupObserver();
     }
 
     killAllWhiteBackgrounds() {
@@ -36,23 +35,6 @@ class SwaggerCleaner {
         });
     }
 
-    killAllSchemas() {
-        const elementsToKill = [
-            '.schemes', '.scheme-container', '.schemas', '.models',
-            '.model-box', 'section.models', '.model-container'
-        ];
-
-        elementsToKill.forEach(selector => {
-            document.querySelectorAll(selector).forEach(el => {
-                el.style.display = 'none';
-                el.style.visibility = 'hidden';
-                el.style.height = '0';
-                el.style.width = '0';
-                el.style.overflow = 'hidden';
-            });
-        });
-    }
-
     forceDarkMode() {
         const forceStyle = document.createElement('style');
         forceStyle.textContent = `
@@ -67,20 +49,26 @@ class SwaggerCleaner {
             .swagger-ui .opblock-section-header {
                 background: rgba(73, 68, 88, 0.7) !important;
             }
+            .swagger-ui .schemes,
+            .swagger-ui .scheme-container,
+            .swagger-ui .schemas,
+            .swagger-ui .models,
+            .swagger-ui .model-box,
+            .swagger-ui section.models,
+            .swagger-ui .model-container {
+                background: rgba(42, 39, 50, 0.8) !important;
+                border-radius: 12px !important;
+                padding: 20px !important;
+                margin: 15px 0 !important;
+                border: 1px solid rgba(42, 39, 50, 0.8) !important;
+            }
         `;
         document.head.appendChild(forceStyle);
     }
 
     setupObserver() {
-       setInterval(() => {
-           document.querySelectorAll('.schemes, .scheme-container, .schemas, .models, .model-box, section.models, .model-container').forEach(el => {
-               el.style.display = 'none';
-           });
-       }, 1000);
-
         const observer = new MutationObserver(() => {
             this.killAllWhiteBackgrounds();
-            this.killAllSchemas();
         });
 
         observer.observe(document.body, {
@@ -89,6 +77,5 @@ class SwaggerCleaner {
         });
     }
 }
-
 
 new SwaggerCleaner();
