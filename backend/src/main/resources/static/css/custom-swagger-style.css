@@ -1,16 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
 
-.swagger-ui .topbar,
-.swagger-ui .schemes,
-.swagger-ui .scheme-container,
-.swagger-ui .schemas,
-.swagger-ui .models,
-.swagger-ui .model-box,
-.swagger-ui section.models,
-.swagger-ui .model-container {
-    display: none !important;
-}
-
 /* === ОБЩИЙ ФОН === */
 .swagger-ui {
     background: #0f0d15 !important;
@@ -516,6 +505,38 @@
     border-color: #ccccff !important;
     box-shadow: 0 0 0 3px rgba(204, 204, 255, 0.2) !important;
     background: rgba(42, 39, 50, 0.9) !important;
+}
+
+/* Схемы (возвращены!) */
+.swagger-ui .schemes,
+.swagger-ui .scheme-container,
+.swagger-ui .schemas,
+.swagger-ui .models,
+.swagger-ui .model-box,
+.swagger-ui section.models,
+.swagger-ui .model-container {
+    display: block !important;
+    background: rgba(42, 39, 50, 0.8) !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+    margin: 15px 0 !important;
+    border: 1px solid rgba(42, 39, 50, 0.8) !important;
+}
+
+.swagger-ui .model-title {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 18px !important;
+    margin-bottom: 15px !important;
+}
+
+.swagger-ui .property-row {
+    color: #e8e4f2 !important;
+    border-color: #2a2732 !important;
+}
+
+.swagger-ui .model {
+    color: #ccccff !important;
 }
 
 /* Кастомный скроллбар */
