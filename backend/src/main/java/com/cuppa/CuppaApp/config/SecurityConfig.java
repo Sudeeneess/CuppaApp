@@ -109,6 +109,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/users/me").authenticated()
                         .requestMatchers("/api/chat-rooms/**").authenticated()
+                        .requestMatchers("/api/chat-participants/**").authenticated()
+                        .requestMatchers("/api/messages/**").authenticated()
                         .anyRequest().permitAll()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
