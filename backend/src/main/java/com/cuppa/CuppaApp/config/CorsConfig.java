@@ -45,12 +45,38 @@ public class CorsConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
                 .allowedOrigins(
-                        "http://localhost:3000",
-                        "http://localhost:5173",
-                        "http://127.0.0.1:3000"
+                        "http://localhost:3000",    // Create React App
+                        "http://localhost:5173",    // Vite
+                        "http://localhost:8080",    // Стандартный dev server
+                        "http://localhost:8081",    // Альтернативный порт
+
+                        // Expo порты (ВСЕ возможные)
+                        "http://localhost:19000",   // Expo Dev Tools
+                        "http://localhost:19001",   // Metro Bundler
+                        "http://localhost:19002",   // Expo Tunnel
+                        "http://localhost:19006",   // Expo Dev Client
+
+                        // Дополнительные порты
+                        "http://localhost:5000",    // Svelte/Solid
+                        "http://localhost:4200",    // Angular
+                        "http://localhost:1234",    // Parcel
+
+                        // IP адреса для тестирования на телефоне
+                        "http://127.0.0.1:3000",
+                        "http://127.0.0.1:5173",
+                        "http://127.0.0.1:19000",
+                        "http://192.168.0.100:3000",
+                        "http://192.168.1.100:3000",
+                        "http://192.168.0.101:3000",
+                        "http://192.168.1.101:3000",
+                        "http://10.0.2.2:3000",     // Android Emulator
+
+                        // Render.com для продакшена
+                        "https://cuppaapp.onrender.com"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(true);
+                .allowCredentials(true)
+                .maxAge(3600);
     }
 }
