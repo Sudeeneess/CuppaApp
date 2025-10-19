@@ -1,7 +1,11 @@
 import { Link, Stack } from "expo-router";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Text } from "react-native";
+import { Button } from "react-native-paper";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Index() {
+  const { signOut } = useAuth();
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -12,6 +16,9 @@ export default function Index() {
       >
         Go to Chat
       </Link>
+      <Button mode="contained" onPress={signOut}>
+        <Text> Sign Out </Text>
+      </Button>
     </View>
   );
 }

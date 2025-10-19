@@ -1,16 +1,16 @@
-import React from "react";
+import { useState } from "react";
 import { Stack } from "expo-router";
 import { StyleSheet, Text, ScrollView, View } from "react-native";
 import { Surface, SegmentedButtons } from "react-native-paper";
-import { SignInForm } from "../../components/sign-in-form";
-import { SignUpForm } from "../../components/sign-up-form";
-import { useIsWide } from "../../hooks/use-is-wide";
+import { SignInForm } from "@/components/sign-in-form";
+import { SignUpForm } from "@/components/sign-up-form";
+import { useIsWide } from "@/hooks/use-is-wide";
 
 export default function Auth() {
   const isWide = useIsWide();
 
   type AuthMode = "signIn" | "signUp";
-  const [authMode, setAuthMode] = React.useState<AuthMode>("signIn");
+  const [authMode, setAuthMode] = useState<AuthMode>("signIn");
 
   return (
     <Surface style={styles.background}>
