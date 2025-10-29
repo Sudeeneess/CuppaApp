@@ -1,9 +1,11 @@
 package com.cuppa.CuppaApp.controllers;
 
 import com.cuppa.CuppaApp.dto.MessageDto;
+import com.cuppa.CuppaApp.dto.MessageReadEventDto;
+import com.cuppa.CuppaApp.dto.TypingEventDto;
 import com.cuppa.CuppaApp.dto.WebSocketMessageDto;
 import com.cuppa.CuppaApp.service.MessageService;
-import lombok.Data;
+import com.cuppa.CuppaApp.service.WebSocketSecurityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -13,6 +15,10 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.annotation.SubscribeMapping;
 import org.springframework.stereotype.Controller;
+
+import java.security.Principal;
+
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
 
@@ -30,11 +36,10 @@ import java.time.LocalDateTime;
  *
  * @author Walerya Pleskova
  * @version 1.0
- * @since 2025-10-16
- *
  * @see MessageService
  * @see SimpMessagingTemplate
  * @see WebSocketMessageDto
+ * @since 2025-10-28
  */
 @Slf4j
 @Controller
@@ -43,6 +48,7 @@ public class ChatWebSocketController {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final MessageService messageService;
+    private final WebSocketSecurityService webSocketSecurityService;
 
     /**
      * Обрабатывает отправку нового сообщения в указанный чат.
@@ -54,11 +60,7 @@ public class ChatWebSocketController {
      * @param messageDto DTO сообщения от клиента
      * @param chatId     идентификатор чат-комнаты из пути URL
      * @return WebSocketMessageDto с сохраненным сообщением для рассылки подписчикам
-     *
-     * @throws Exception если произошла ошибка при сохранении сообщения в базу данных
-     *
-     * @example
-     * <pre>{@code
+     * @example <pre>{@code
      * // Клиент отправляет:
      * {
      *   "senderId": 123,
@@ -80,14 +82,16 @@ public class ChatWebSocketController {
      */
     @MessageMapping("/chat/{chatId}/send")
     @SendTo("/topic/chat/{chatId}")
-    public WebSocketMessageDto sendMessage(
-            @Payload MessageDto messageDto,
-            @DestinationVariable Integer chatId) {
+    public WebSocketMessageDto sendMessage(@Payload MessageDto messageDto, @DestinationVariable Integer chatId, Principal principal  //  Добавляем Principal для аутентификации
+    ) {
 
-        log.info("WebSocket: Получено сообщение для чата {} от пользователя {}",
-                chatId, messageDto.getSenderId());
+        log.info("WebSocket: Получено сообщение для чата {} от пользователя {} (аутентифицированный: {})", chatId, messageDto.getSenderId(), principal.getName());
 
         try {
+            //  ПРОВЕРКА БЕЗОПАСНОСТИ
+            webSocketSecurityService.validateSender(messageDto.getSenderId(), principal.getName());
+            webSocketSecurityService.validateChatAccess(chatId, principal.getName());
+
             // Устанавливаем chatId из пути
             messageDto.setChatRoomId(chatId);
 
@@ -106,6 +110,16 @@ public class ChatWebSocketController {
 
             log.info("WebSocket: Сообщение сохранено и отправлено в чат {}", chatId);
             return webSocketMessage;
+
+        } catch (AccessDeniedException e) {
+            log.warn("WebSocket: Отказано в доступе для чата {}: {}", chatId, e.getMessage());
+
+            WebSocketMessageDto errorMessage = new WebSocketMessageDto();
+            errorMessage.setType(WebSocketMessageDto.MessageType.CHAT_MESSAGE);
+            errorMessage.setChatRoomId(chatId);
+            errorMessage.setContent("Ошибка доступа: " + e.getMessage());
+            errorMessage.setTimestamp(LocalDateTime.now());
+            return errorMessage;
 
         } catch (Exception e) {
             log.error("WebSocket: Ошибка при обработке сообщения для чата {}", chatId, e);
@@ -126,11 +140,9 @@ public class ChatWebSocketController {
      * <p><b>Маршрут:</b> {@code /app/chat/{chatId}/typing}
      * <p><b>Назначение:</b> {@code /topic/chat/{chatId}/typing}
      *
-     * @param chatId       идентификатор чат-комнаты
-     * @param typingEvent  событие набора текста с информацией о пользователе
-     *
-     * @example
-     * <pre>{@code
+     * @param chatId      идентификатор чат-комнаты
+     * @param typingEvent событие набора текста с информацией о пользователе
+     * @example <pre>{@code
      * // Клиент отправляет при начале набора:
      * {
      *   "userId": 123,
@@ -149,12 +161,9 @@ public class ChatWebSocketController {
      * }</pre>
      */
     @MessageMapping("/chat/{chatId}/typing")
-    public void handleTyping(
-            @DestinationVariable Integer chatId,
-            @Payload TypingEvent typingEvent) {
+    public void handleTyping(@DestinationVariable Integer chatId, @Payload TypingEventDto typingEvent) {
 
-        log.debug("WebSocket: Пользователь {} печатает в чате {}",
-                typingEvent.getUserId(), chatId);
+        log.debug("WebSocket: Пользователь {} печатает в чате {}", typingEvent.getUserId(), chatId);
 
         WebSocketMessageDto typingMessage = new WebSocketMessageDto();
         typingMessage.setType(WebSocketMessageDto.MessageType.TYPING);
@@ -173,11 +182,9 @@ public class ChatWebSocketController {
      * <p><b>Маршрут:</b> {@code /app/chat/{chatId}/read}
      * <p><b>Назначение:</b> {@code /topic/chat/{chatId}/read}
      *
-     * @param chatId     идентификатор чат-комнаты
-     * @param readEvent  событие прочтения с информацией о пользователе и сообщении
-     *
-     * @example
-     * <pre>{@code
+     * @param chatId    идентификатор чат-комнаты
+     * @param readEvent событие прочтения с информацией о пользователе и сообщении
+     * @example <pre>{@code
      * // Клиент отправляет:
      * {
      *   "userId": 123,
@@ -196,12 +203,9 @@ public class ChatWebSocketController {
      * }</pre>
      */
     @MessageMapping("/chat/{chatId}/read")
-    public void handleMessageRead(
-            @DestinationVariable Integer chatId,
-            @Payload MessageReadEvent readEvent) {
+    public void handleMessageRead(@DestinationVariable Integer chatId, @Payload MessageReadEventDto readEvent) {
 
-        log.debug("WebSocket: Пользователь {} прочитал сообщения в чате {}",
-                readEvent.getUserId(), chatId);
+        log.debug("WebSocket: Пользователь {} прочитал сообщения в чате {}", readEvent.getUserId(), chatId);
 
         WebSocketMessageDto readMessage = new WebSocketMessageDto();
         readMessage.setType(WebSocketMessageDto.MessageType.MESSAGE_READ);
@@ -221,10 +225,8 @@ public class ChatWebSocketController {
      * <p><b>Ответ:</b> приветственное сообщение отправляется только подписавшемуся клиенту
      *
      * @param chatId идентификатор чат-комнаты
-     * @return WebSocketMessageDto приветственное сообщение о успешном подключении
-     *
-     * @example
-     * <pre>{@code
+     * @return WebSocketMessageDto приветственное сообщение об успешном подключении
+     * @example <pre>{@code
      * // Клиент подписывается на /topic/chat/1
      * // Сервер отправляет ответ:
      * {
@@ -247,59 +249,4 @@ public class ChatWebSocketController {
 
         return welcomeMessage;
     }
-}
-
-/**
- * Data Transfer Object для события набора текста (typing indicator).
- * Используется для уведомления других участников чата о действиях пользователя.
- *
- * @author Cuppa Development Team
- * @version 1.0
- */
-@Data
-class TypingEvent {
-
-    /**
-     * Уникальный идентификатор пользователя, который печатает
-     */
-    private Integer userId;
-
-    /**
-     * Отображаемое имя пользователя
-     */
-    private String userName;
-
-    /**
-     * Флаг состояния набора текста:
-     * {@code true} - пользователь начал печатать,
-     * {@code false} - пользователь закончил печатать
-     */
-    private Boolean isTyping;
-}
-
-/**
- * Data Transfer Object для события прочтения сообщений.
- * Используется для отслеживания статуса прочтения сообщений в чате.
- *
- * @author Cuppa Development Team
- * @version 1.0
- */
-@Data
-class MessageReadEvent {
-
-    /**
-     * Уникальный идентификатор пользователя, который прочитал сообщения
-     */
-    private Integer userId;
-
-    /**
-     * Отображаемое имя пользователя
-     */
-    private String userName;
-
-    /**
-     * Идентификатор последнего прочитанного сообщения в чате.
-     * Все сообщения с ID меньше или равным этому считаются прочитанными.
-     */
-    private Integer lastReadMessageId;
 }
