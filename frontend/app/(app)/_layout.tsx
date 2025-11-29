@@ -1,5 +1,6 @@
 import { Stack, Redirect } from "expo-router";
 import { useAuth } from "@/hooks/use-auth";
+import { ChatProvider } from "@/contexts/chat-context";
 
 export default function AppLayout() {
   const { isAuthenticated } = useAuth();
@@ -8,5 +9,9 @@ export default function AppLayout() {
     return <Redirect href={"/(auth)"} />;
   }
 
-  return <Stack screenOptions={{}} />;
+  return (
+    <ChatProvider>
+      <Stack screenOptions={{}} />
+    </ChatProvider>
+  );
 }

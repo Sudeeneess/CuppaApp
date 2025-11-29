@@ -31,7 +31,7 @@ function createWindow() {
   if (isDev) {
     // В режиме разработки Expo или Webpack Dev Server
     // Убедитесь, что этот порт совпадает с вашим веб-сборщиком
-    mainWindow.loadURL("http://localhost:8081");
+    mainWindow.loadURL("http://localhost:3000");
     mainWindow.webContents.openDevTools(); // Открываем DevTools для удобства
   } else {
     // В продакшене: загружаем скомпилированный HTML-файл

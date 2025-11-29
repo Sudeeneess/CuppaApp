@@ -36,14 +36,14 @@ interface AuthResponse {
 
 // Установите базовый URL вашего бэкенда
 // Используем "http://localhost:8080/api" из документации
-const API_BASE_URL = "https://cuppaapp.onrender.com";
+const API_BASE_URL = "http://localhost:8080/api";
 
 export const authService = {
   /**
    * Выполняет вход пользователя. Соответствует POST /api/auth/login
    */
   async signIn(credentials: Credentials): Promise<User> {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -66,6 +66,8 @@ export const authService = {
     // 1. Получаем данные из ответа
     const responseData: AuthResponse = await response.json();
 
+    console.log("ploho" + responseData.accessToken);
+
     // 2. Сохраняем токен (accessToken)
     await AsyncStorage.setItem("authToken", responseData.accessToken);
 
@@ -81,7 +83,7 @@ export const authService = {
    * Выполняет регистрацию нового пользователя. Соответствует POST /api/auth/register
    */
   async signUp(signUpData: SignUpData): Promise<User> {
-    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -126,7 +128,7 @@ export const authService = {
     // 3. Запрос к API для инвалидации сессии/токена на бэкенде
     try {
       if (authToken) {
-        await fetch(`${API_BASE_URL}/api/auth/logout`, {
+        await fetch(`${API_BASE_URL}/auth/logout`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${authToken}`,
