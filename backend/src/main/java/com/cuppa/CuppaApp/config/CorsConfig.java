@@ -27,7 +27,7 @@ import java.util.List;
  *
  * @author Walerya Pleskova
  * @version 2.1
- * @since 2025-10-28
+ * @since 2025-11-29
  */
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {

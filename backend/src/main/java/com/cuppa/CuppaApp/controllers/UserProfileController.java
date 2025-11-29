@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * REST контроллер для управления профилем текущего пользователя.
@@ -23,8 +24,7 @@ import java.util.List;
  * что гарантирует что чувствительные данные (пароли) никогда не передаются клиенту.
  *
  * @author Walerya Pleskova
- * @version 2.0
- * @since 2025-10-06
+ * @since 2025-11-29
  */
 @RestController
 @RequestMapping("/api/users")
@@ -91,7 +91,7 @@ public class UserProfileController {
 
             List<UserDto> userDtos = users.stream()
                     .map(UserDto::fromEntity)
-                    .toList();
+                    .collect(Collectors.toList());
 
             return ResponseEntity.ok(userDtos);
         } catch (Exception e) {

@@ -10,152 +10,76 @@ import java.time.LocalDateTime;
  * Сущность сообщения (Message) для приложения Cuppa
  *
  * <p>Отображает таблицу "messages" из базы данных в объектную модель Java.
- * Содержит информацию о сообщениях в чат-комнатах системы мессенджера.
- *
- * <p>Поддерживает различные типы сообщений (текст, изображения, файлы),
- * отслеживание статусов доставки и прочтения, а также цепочки ответов.
+ * Содержит информацию о тексте, отправителе, времени и статусах сообщения.</p>
  *
  * @author Petr Panteev
- * @version 1.0
- * @since 09.10.2025
+ * @version 1.1
+ * @since 15.10.2025
  */
-
 @Entity
-@Table(name = "messages", indexes = {
-        @Index(name = "idx_messages_chat_id_sent_at",
-                columnList = "chat_id, sent_at DESC")
-})
+@Table(name = "messages")
 @Data
 @NoArgsConstructor
 public class Message {
 
-    /**
-     * Уникальный идентификатор сообщения
-     *
-     * <p>Совпадает с первичным ключом в таблице messages.
-     * Является автоинкрементным полем в базе данных.
-     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Integer id;
 
-    /**
-     * Чат-комната, в которой отправлено сообщение
-     *
-     * <p>Связь Many-to-One: много сообщений могут быть в одной чат-комнате.
-     * Внешний ключ к таблице chat_rooms.
-     */
+    // Связь с чат-комнатой
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "chat_id", referencedColumnName = "id")
+    @JoinColumn(name = "chat_id", nullable = false)
     private ChatRoom chatRoom;
 
-    /**
-     * Отправитель сообщения
-     *
-     * <p>Связь Many-to-One: один пользователь может отправить много сообщений.
-     * Внешний ключ к таблице users.
-     */
+    // Связь с отправителем
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sender_id", referencedColumnName = "id")
+    @JoinColumn(name = "sender_id", nullable = false)
     private User sender;
 
-    /**
-     * Содержимое сообщения
-     *
-     * <p>Текст сообщения или ссылка на медиа-контент.
-     * Использует тип TEXT для хранения сообщений любой длины.
-     * Не может быть null.
-     */
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    /** Содержимое сообщения. */
+    @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
 
-    /**
-     * Тип сообщения
-     *
-     * <p>Определяет тип содержимого сообщения.
-     * По умолчанию устанавливается в TEXT.
-     * Возможные значения: TEXT, IMAGE, FILE, VOICE, VIDEO и т.д.
-     */
+    /** Тип сообщения (TEXT, IMAGE, FILE и т.д.) */
     @Enumerated(EnumType.STRING)
     @Column(name = "message_type", length = 20)
     private MessageType messageType = MessageType.TEXT;
 
-    /**
-     * Дата и время отправки сообщения
-     *
-     * <p>Устанавливается автоматически при создании сообщения.
-     * По умолчанию используется текущая временная метка.
-     * Используется для сортировки сообщений в чате.
-     */
+    /** Время отправки сообщения. Соответствует sent_at в БД. */
     @Column(name = "sent_at")
-    private LocalDateTime sentAt;
+    private LocalDateTime sentAt = LocalDateTime.now();
 
-    /**
-     * Дата и время доставки сообщения
-     *
-     * <p>Отслеживает, когда сообщение было доставлено получателям.
-     * Может быть null если сообщение еще не доставлено.
+    /** * Время доставки сообщения получателю. Соответствует delivered_at в БД.
+     * Используется для статуса "доставлено" (одна галочка).
      */
     @Column(name = "delivered_at")
     private LocalDateTime deliveredAt;
 
-    /**
-     * Дата и время прочтения сообщения
-     *
-     * <p>Отслеживает, когда сообщение было прочитано получателями.
-     * Может быть null если сообщение еще не прочитано.
+    /** * Время прочтения сообщения получателем. Соответствует read_at в БД.
+     * Используется для статуса "прочитано" (две синих галочки).
      */
     @Column(name = "read_at")
     private LocalDateTime readAt;
 
-    /**
-     * Сообщение, на которое данное сообщение является ответом
-     *
-     * <p>Связь Many-to-One: много сообщений могут отвечать на одно сообщение.
-     * Внешний ключ к той же таблице messages.
-     * Реализует функциональность "ответ на сообщение".
-     */
+    /** Ссылка на сообщение, на которое был дан ответ (если есть) */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reply_to_message_id", referencedColumnName = "id")
+    @JoinColumn(name = "reply_to_message_id")
     private Message replyToMessage;
 
-    /**
-     * Флаг редактирования сообщения
-     *
-     * <p>Показывает, было ли сообщение отредактировано после отправки.
-     * По умолчанию устанавливается в false.
-     */
+    /** Флаг, указывающий, было ли сообщение отредактировано. */
     @Column(name = "is_edited")
     private Boolean isEdited = false;
 
-    /**
-     * Дата и время последнего редактирования сообщения
-     *
-     * <p>Отслеживает, когда сообщение было в последний раз отредактировано.
-     * Может быть null если сообщение никогда не редактировалось.
+    /** * Время последнего редактирования сообщения. Соответствует edited_at в БД.
+     * Это поле, которое в коде мы ранее ошибочно называли updatedAt.
      */
     @Column(name = "edited_at")
     private LocalDateTime editedAt;
 
 
-/**
- * Перечисление типов сообщений
- *
- * <p>Определяет возможные типы сообщений в системе.
- * TEXT - текстовое сообщение
- * IMAGE - изображение
- * FILE - файл
- * VOICE - голосовое сообщение
- * VIDEO - видео сообщение
- * SYSTEM - системное сообщение
- */
-public static enum MessageType {
-    TEXT,
-    IMAGE,
-    FILE,
-    VOICE,
-    VIDEO,
-    SYSTEM
-}
+    /** Перечисление для типов сообщений */
+    public enum MessageType {
+        TEXT, IMAGE, FILE, VOICE, VIDEO, SYSTEM
+    }
 }

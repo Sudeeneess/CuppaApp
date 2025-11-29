@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -19,10 +20,8 @@ import java.util.Map;
  * возвращая JWT-токены для доступа к защищенным ресурсам.</p>
  *
  * @author Walerya Pleskova
- * @version 1.0
- * @since 2025-10-06
+ * @since 2025-11-29
  */
-
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")
@@ -88,18 +87,22 @@ public class AuthController {
         try {
             log.info("User initiated logout procedure");
 
-            return ResponseEntity.ok(Map.of(
-                    "message", "Successfully logged out",
-                    "timestamp", LocalDateTime.now().toString(),
-                    "status", "success"
-            ));
+            Map<String, String> responseBody = new HashMap<>();
+            responseBody.put("message", "Successfully logged out");
+            responseBody.put("timestamp", LocalDateTime.now().toString());
+            responseBody.put("status", "success");
+
+            return ResponseEntity.ok(responseBody);
+
         } catch (Exception e) {
             log.error("Error during logout procedure", e);
+
+            Map<String, String> errorBody = new HashMap<>();
+            errorBody.put("error", "Logout failed");
+            errorBody.put("timestamp", LocalDateTime.now().toString());
+
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of(
-                            "error", "Logout failed",
-                            "timestamp", LocalDateTime.now().toString()
-                    ));
+                    .body(errorBody);
         }
     }
 }

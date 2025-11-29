@@ -1,11 +1,7 @@
 package com.cuppa.CuppaApp.controllers;
 
 import com.cuppa.CuppaApp.dto.MessageDto;
-import com.cuppa.CuppaApp.service.MessageService;
-import com.cuppa.CuppaApp.service.SecurityService;
-import com.cuppa.CuppaApp.service.RateLimitService;
-import com.cuppa.CuppaApp.service.XSSProtectionService;
-import com.cuppa.CuppaApp.service.AnomalyDetectionService;
+import com.cuppa.CuppaApp.service.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +13,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Контроллер для управления сообщениями в чат-комнатах
@@ -32,8 +31,7 @@ import java.util.List;
  *
  * @author Petr Panteev
  * @author Walerya Pleskova
- * @version 3.0
- * @since 28.10.2025
+ * @since 2025-11-29
  */
 @Slf4j
 @RestController
@@ -218,125 +216,43 @@ public class MessageController {
     }
 
     /**
-     * Редактирование существующего сообщения
+     * Обновление (редактирование) сообщения.
+     * Требует аутентификации: только отправитель может редактировать свое сообщение.
      *
-     * <p>Обновляет содержимое сообщения и устанавливает флаг редактирования.
-     * Включает все проверки безопасности как при отправке нового сообщения.
-     *
-     * @param id             идентификатор сообщения
-     * @param messageDto     DTO с обновленными данными сообщения
-     * @param authentication объект аутентификации Spring Security
-     * @return обновленное DTO сообщения или ошибку безопасности
+     * @param id ID сообщения
+     * @param messageDto DTO с новым контентом
+     * @return Обновленный MessageDto
      */
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateMessage(@PathVariable Integer id, @Valid @RequestBody MessageDto messageDto, Authentication authentication) {
-
-        String userEmail = authentication.getName();
-        log.info("Редактирование сообщения с ID: {}", id);
-
-        // ПРОВЕРКА RATE LIMITING
-        if (!rateLimitService.isAllowed(userEmail)) {
-            log.warn("Rate limit exceeded for user: {}", userEmail);
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Too many requests. Please try again later.");
-        }
-
+    @PatchMapping("/{id}")
+    public ResponseEntity<MessageDto> updateMessage(
+            @PathVariable Integer id,
+            @Valid @RequestBody MessageDto messageDto) {
         try {
-            // ПРОВЕРКА: пользователь является автором сообщения
-            MessageDto existingMessage = messageService.getMessageById(id);
-            if (!securityService.isCurrentUser(existingMessage.getSenderId())) {
-                log.warn("Попытка редактирования чужого сообщения: {}", id);
-
-                // МОНИТОРИНГ АНОМАЛЬНОЙ АКТИВНОСТИ
-                anomalyDetectionService.recordUserAction(userEmail, AnomalyDetectionService.ActionType.ACCESS_DENIED, "message_" + id, "Attempted to edit another user's message");
-
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Cannot edit another user's message");
-            }
-
-            // КРИТИЧЕСКАЯ ПРОВЕРКА: нельзя изменить чат сообщения
-            if (!existingMessage.getChatRoomId().equals(messageDto.getChatRoomId())) {
-                log.warn("Попытка изменения чата сообщения: {} -> {}", existingMessage.getChatRoomId(), messageDto.getChatRoomId());
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Cannot change message chat room");
-            }
-
-            // ПРОВЕРКА: пользователь не пытается изменить отправителя
-            if (!existingMessage.getSenderId().equals(messageDto.getSenderId())) {
-                log.warn("Попытка изменения отправителя сообщения: {}", id);
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Cannot change message sender");
-            }
-
-            // ПРОВЕРКА: XSS ЗАЩИТА
-            if (xssProtectionService.hasXSSThreats(messageDto.getContent())) {
-                log.warn("Обнаружена XSS угроза при редактировании сообщения: {}", id);
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Message contains potentially dangerous content");
-            }
-
-            // ПРОВЕРКА: ВАЛИДАЦИЯ РАЗМЕРА И СОДЕРЖИМОГО
-            ResponseEntity<?> validationResult = validateMessageContent(messageDto);
-            if (validationResult != null) {
-                return validationResult;
-            }
-
-            // ОЧИСТКА КОНТЕНТА ОТ XSS
-            String sanitizedContent = xssProtectionService.sanitize(messageDto.getContent());
-            messageDto.setContent(sanitizedContent);
-
-            MessageDto updatedMessage = messageService.updateMessage(id, messageDto);
-
-            // МОНИТОРИНГ АКТИВНОСТИ
-            anomalyDetectionService.recordUserAction(userEmail, AnomalyDetectionService.ActionType.UPDATE_MESSAGE, "message_" + id, "Message updated successfully");
-
+            Integer currentUserId = securityService.getCurrentUser().getId();
+            MessageDto updatedMessage = messageService.updateMessage(id, messageDto, currentUserId);
             return ResponseEntity.ok(updatedMessage);
-        } catch (RuntimeException e) {
-            log.error("Ошибка при редактировании сообщения {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Message not found: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Ошибка при обновлении сообщения ID {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
     }
 
     /**
-     * Удаление сообщения
+     * Удаление сообщения (мягкое или жесткое).
+     * Требует аутентификации: только отправитель может удалить свое сообщение.
      *
-     * <p>Удаляет сообщение из системы. Проверяет, что текущий пользователь
-     * является автором сообщения. В реальном приложении может
-     * использоваться мягкое удаление (soft delete) для сохранения
-     * истории переписки.
-     *
-     * @param id             идентификатор сообщения
-     * @param authentication объект аутентификации Spring Security
-     * @return ответ с подтверждением удаления или 403 Forbidden если пользователь не автор
+     * @param id ID сообщения
+     * @return 204 No Content
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteMessage(@PathVariable Integer id, Authentication authentication) {
-        log.info("Удаление сообщения с ID: {}", id);
-
-        String userEmail = authentication.getName();
-
-        // ПРОВЕРКА RATE LIMITING
-        if (!rateLimitService.isAllowed(userEmail)) {
-            log.warn("Rate limit exceeded for user: {}", userEmail);
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Too many requests. Please try again later.");
-        }
-
+    public ResponseEntity<Void> deleteMessage(@PathVariable Integer id) {
         try {
-            // ПРОВЕРКА: пользователь является автором сообщения
-            MessageDto existingMessage = messageService.getMessageById(id);
-            if (!securityService.isCurrentUser(existingMessage.getSenderId())) {
-                log.warn("Попытка удаления чужого сообщения: {}", id);
-
-                // МОНИТОРИНГ АНОМАЛЬНОЙ АКТИВНОСТИ
-                anomalyDetectionService.recordUserAction(userEmail, AnomalyDetectionService.ActionType.ACCESS_DENIED, "message_" + id, "Attempted to delete another user's message");
-
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Cannot delete another user's message");
-            }
-
-            messageService.deleteMessage(id);
-
-            // МОНИТОРИНГ АКТИВНОСТИ
-            anomalyDetectionService.recordUserAction(userEmail, AnomalyDetectionService.ActionType.DELETE_MESSAGE, "message_" + id, "Message deleted successfully");
-
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException e) {
-            log.error("Ошибка при удалении сообщения {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Message not found: " + e.getMessage());
+            Integer currentUserId = securityService.getCurrentUser().getId();
+            messageService.deleteMessage(id, currentUserId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Ошибка при удалении сообщения ID {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
     }
 
@@ -516,14 +432,19 @@ public class MessageController {
      * @return ответ с подтверждением обновления или 403 Forbidden если нет доступа
      */
     @PutMapping("/chat/{chatId}/mark-as-read")
-    public ResponseEntity<?> markMessagesAsRead(@PathVariable Integer chatId, Authentication authentication) {
+    public ResponseEntity<Map<String, Object>> markMessagesAsRead(@PathVariable Integer chatId, Authentication authentication) {
 
         String userEmail = authentication.getName();
+        Map<String, Object> response = new HashMap<>();
 
         // ПРОВЕРКА RATE LIMITING
         if (!rateLimitService.isAllowed(userEmail)) {
             log.warn("Rate limit exceeded for user: {}", userEmail);
-            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Too many requests. Please try again later.");
+            response.put("status", "error");
+            response.put("message", "Too many requests. Please try again later.");
+            response.put("code", "RATE_LIMIT_EXCEEDED");
+            response.put("timestamp", LocalDateTime.now());
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(response);
         }
 
         try {
@@ -534,7 +455,12 @@ public class MessageController {
                 // МОНИТОРИНГ АНОМАЛЬНОЙ АКТИВНОСТИ
                 anomalyDetectionService.recordUserAction(userEmail, AnomalyDetectionService.ActionType.ACCESS_DENIED, "chat_" + chatId, "Attempted to mark messages as read in unauthorized chat");
 
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("No access to this chat");
+                response.put("status", "error");
+                response.put("message", "No access to this chat");
+                response.put("code", "ACCESS_DENIED");
+                response.put("chatId", chatId);
+                response.put("timestamp", LocalDateTime.now());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
             }
 
             log.info("Отметка сообщений в чате ID: {} как прочитанные", chatId);
@@ -543,10 +469,24 @@ public class MessageController {
             anomalyDetectionService.recordUserAction(userEmail, AnomalyDetectionService.ActionType.READ_MESSAGE, "chat_" + chatId, "Marked all messages as read");
 
             messageService.markMessagesAsRead(chatId);
-            return ResponseEntity.ok().build();
+
+            // УСПЕШНЫЙ ОТВЕТ
+            response.put("status", "success");
+            response.put("message", "Сообщения отмечены как прочитанные");
+            response.put("chatId", chatId);
+            response.put("timestamp", LocalDateTime.now());
+            response.put("userEmail", userEmail);
+            return ResponseEntity.ok(response);
+
         } catch (RuntimeException e) {
             log.error("Ошибка при отметке сообщений как прочитанных в чате {}: {}", chatId, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error marking messages as read: " + e.getMessage());
+
+            response.put("status", "error");
+            response.put("message", "Error marking messages as read: " + e.getMessage());
+            response.put("code", "INTERNAL_ERROR");
+            response.put("chatId", chatId);
+            response.put("timestamp", LocalDateTime.now());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
@@ -621,22 +561,19 @@ public class MessageController {
                 break;
 
             case "IMAGE":
-                // Для base64 изображений или URL
-                if (contentLength > 500000) { // ~500KB limit for base64 images
+                if (contentLength > 500000) {
                     return ResponseEntity.badRequest().body("Image too large (max 500KB)");
                 }
                 break;
 
             case "FILE":
-                // Для файлов - content содержит URL или метаданные
-                if (contentLength > 100000) { // 100KB for file metadata/URLs
+                if (contentLength > 100000) {
                     return ResponseEntity.badRequest().body("File metadata too large");
                 }
                 break;
 
             case "VOICE":
             case "VIDEO":
-                // Для медиа - content содержит URL или идентификатор
                 if (contentLength > 2000) {
                     return ResponseEntity.badRequest().body("Media reference too long");
                 }
@@ -652,6 +589,6 @@ public class MessageController {
                 return ResponseEntity.badRequest().body("Unsupported message type: " + messageType);
         }
 
-        return null; // Валидация пройдена
+        return null;
     }
 }

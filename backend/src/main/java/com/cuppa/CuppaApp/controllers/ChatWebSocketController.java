@@ -14,12 +14,10 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.annotation.SubscribeMapping;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
-
-import org.springframework.security.access.AccessDeniedException;
-
 import java.time.LocalDateTime;
 
 /**
@@ -35,11 +33,10 @@ import java.time.LocalDateTime;
  * </ul>
  *
  * @author Walerya Pleskova
- * @version 1.0
  * @see MessageService
  * @see SimpMessagingTemplate
  * @see WebSocketMessageDto
- * @since 2025-10-28
+ * @since 2025-11-29
  */
 @Slf4j
 @Controller
@@ -59,36 +56,18 @@ public class ChatWebSocketController {
      *
      * @param messageDto DTO сообщения от клиента
      * @param chatId     идентификатор чат-комнаты из пути URL
+     * @param principal  объект аутентификации пользователя
      * @return WebSocketMessageDto с сохраненным сообщением для рассылки подписчикам
-     * @example <pre>{@code
-     * // Клиент отправляет:
-     * {
-     *   "senderId": 123,
-     *   "content": "Привет всем!",
-     *   "messageType": "TEXT"
-     * }
-     *
-     * // Сервер рассылает:
-     * {
-     *   "type": "CHAT_MESSAGE",
-     *   "chatRoomId": 1,
-     *   "senderId": 123,
-     *   "senderName": "User123",
-     *   "content": "Привет всем!",
-     *   "timestamp": "2025-01-16T18:30:00",
-     *   "payload": { ... полное сообщение ... }
-     * }
-     * }</pre>
      */
     @MessageMapping("/chat/{chatId}/send")
     @SendTo("/topic/chat/{chatId}")
-    public WebSocketMessageDto sendMessage(@Payload MessageDto messageDto, @DestinationVariable Integer chatId, Principal principal  //  Добавляем Principal для аутентификации
-    ) {
+    public WebSocketMessageDto sendMessage(@Payload MessageDto messageDto, @DestinationVariable Integer chatId, Principal principal) {
 
-        log.info("WebSocket: Получено сообщение для чата {} от пользователя {} (аутентифицированный: {})", chatId, messageDto.getSenderId(), principal.getName());
+        log.info("WebSocket: Получено сообщение для чата {} от пользователя {} (аутентифицированный: {})",
+                chatId, messageDto.getSenderId(), principal.getName());
 
         try {
-            //  ПРОВЕРКА БЕЗОПАСНОСТИ
+            // ПРОВЕРКА БЕЗОПАСНОСТИ
             webSocketSecurityService.validateSender(messageDto.getSenderId(), principal.getName());
             webSocketSecurityService.validateChatAccess(chatId, principal.getName());
 
@@ -142,23 +121,6 @@ public class ChatWebSocketController {
      *
      * @param chatId      идентификатор чат-комнаты
      * @param typingEvent событие набора текста с информацией о пользователе
-     * @example <pre>{@code
-     * // Клиент отправляет при начале набора:
-     * {
-     *   "userId": 123,
-     *   "userName": "User123",
-     *   "isTyping": true
-     * }
-     *
-     * // Сервер рассылает:
-     * {
-     *   "type": "TYPING",
-     *   "chatRoomId": 1,
-     *   "senderId": 123,
-     *   "timestamp": "2025-01-16T18:30:00",
-     *   "payload": { ... typing event ... }
-     * }
-     * }</pre>
      */
     @MessageMapping("/chat/{chatId}/typing")
     public void handleTyping(@DestinationVariable Integer chatId, @Payload TypingEventDto typingEvent) {
@@ -184,23 +146,6 @@ public class ChatWebSocketController {
      *
      * @param chatId    идентификатор чат-комнаты
      * @param readEvent событие прочтения с информацией о пользователе и сообщении
-     * @example <pre>{@code
-     * // Клиент отправляет:
-     * {
-     *   "userId": 123,
-     *   "userName": "User123",
-     *   "lastReadMessageId": 456
-     * }
-     *
-     * // Сервер рассылает:
-     * {
-     *   "type": "MESSAGE_READ",
-     *   "chatRoomId": 1,
-     *   "senderId": 123,
-     *   "timestamp": "2025-01-16T18:30:00",
-     *   "payload": { ... read event ... }
-     * }
-     * }</pre>
      */
     @MessageMapping("/chat/{chatId}/read")
     public void handleMessageRead(@DestinationVariable Integer chatId, @Payload MessageReadEventDto readEvent) {
@@ -226,16 +171,6 @@ public class ChatWebSocketController {
      *
      * @param chatId идентификатор чат-комнаты
      * @return WebSocketMessageDto приветственное сообщение об успешном подключении
-     * @example <pre>{@code
-     * // Клиент подписывается на /topic/chat/1
-     * // Сервер отправляет ответ:
-     * {
-     *   "type": "CHAT_MESSAGE",
-     *   "chatRoomId": 1,
-     *   "content": "Подключен к чату в реальном времени",
-     *   "timestamp": "2025-01-16T18:30:00"
-     * }
-     * }</pre>
      */
     @SubscribeMapping("/chat/{chatId}")
     public WebSocketMessageDto handleChatSubscription(@DestinationVariable Integer chatId) {

@@ -5,7 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -13,8 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Мониторит частоту запросов, подозрительные действия и потенциальные атаки
  *
  * @author Walerya Pleskova
- * @version 1.0
- * @since 28.10.2025
+ * @since 2025-11-29
  */
 @Slf4j
 @Service

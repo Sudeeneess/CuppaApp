@@ -1,18 +1,26 @@
 package com.cuppa.CuppaApp.service;
 
+import com.cuppa.CuppaApp.dto.ChatParticipantDto;
+import com.cuppa.CuppaApp.dto.ChatRoomDto;
+import com.cuppa.CuppaApp.entity.ChatParticipant;
 import com.cuppa.CuppaApp.entity.ChatRoom;
 import com.cuppa.CuppaApp.entity.User;
+import com.cuppa.CuppaApp.repository.ChatParticipantRepository;
 import com.cuppa.CuppaApp.repository.ChatRoomRepository;
+import com.cuppa.CuppaApp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy; // <-- ИСПРАВЛЕННЫЙ ИМПОРТ
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Сервис для бизнес-логики работы с чат-комнатами в веб-мессенджере Cuppa
@@ -31,6 +39,77 @@ import java.util.Optional;
 public class ChatRoomService {
 
     private final ChatRoomRepository chatRoomRepository;
+    private final ChatParticipantService chatParticipantService;
+    @Lazy // <-- Использует правильный @Lazy для отложенной инициализации
+    private final MessageService messageService;
+    private final SecurityService securityService;
+    private final ChatParticipantRepository chatParticipantRepository;
+    private final UserRepository userRepository;
+
+    /**
+     * Получить список чат-комнат, в которых состоит указанный пользователь.
+     *
+     * <p>Использует ChatRoomRepository.findChatRoomsByUserId для фильтрации.
+     *
+     * @param userId идентификатор пользователя
+     * @return отсортированный список активных чат-комнат, в которых участвует пользователь
+     */
+    @Transactional(readOnly = true)
+    public List<ChatRoomDto> getChatRoomsForUser(Integer userId) {
+        List<ChatRoom> chatRooms = chatRoomRepository.findChatRoomsByUserId(userId);
+
+        return chatRooms.stream()
+                .map(chatRoom -> convertToDto(chatRoom, userId))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Полное преобразование сущности ChatRoom в DTO, включая дополнительную логику.
+     */
+    private ChatRoomDto convertToDto(ChatRoom chatRoom, Integer currentUserId) {
+        // Убедитесь, что в ChatRoomDto добавлены все поля (participants, unreadCount, isOnline, lastSeen)
+        ChatRoomDto dto = ChatRoomDto.fromEntity(chatRoom);
+
+        // 1. Получение участника для расчета unreadCount (используем Entity метод)
+        ChatParticipant currentParticipant = chatParticipantService.findParticipantEntityByChatAndUser(
+                chatRoom.getId(),
+                currentUserId
+        );
+
+        // 2. Расчет UnreadCount
+        if (currentParticipant != null) {
+            LocalDateTime lastReadTime = currentParticipant.getLastReadAt();
+
+            Integer unreadCount = messageService.countUnreadMessages(
+                    chatRoom.getId(),
+                    lastReadTime,
+                    currentUserId
+            );
+            dto.setUnreadCount(unreadCount);
+        } else {
+            dto.setUnreadCount(0);
+        }
+
+        // 3. Получение списка участников (Participants) (теперь с заглушками статуса)
+        List<ChatParticipantDto> participants = chatParticipantService.getChatParticipantsByChatId(chatRoom.getId());
+        dto.setParticipants(participants);
+
+        // 4. isOnline и lastSeen (логика для 1-на-1 чатов, берем из DTO собеседника)
+        if (chatRoom.getType() == ChatRoom.ChatRoomType.PRIVATE && participants.size() == 2) {
+            // Находим DTO собеседника
+            participants.stream()
+                    .filter(p -> !p.getUserId().equals(currentUserId))
+                    .findFirst()
+                    .ifPresent(otherParticipant -> {
+                        // Используем поля-заглушки из ChatParticipantDto
+                        dto.setIsOnline(otherParticipant.getIsOnline());
+                        dto.setLastSeen(otherParticipant.getLastSeen());
+                    });
+        }
+
+        return dto;
+    }
+
 
     /**
      * Создать новую чат-комнату
@@ -78,36 +157,53 @@ public class ChatRoomService {
         return savedChatRoom;
     }
 
-    /**
-     * Создать или найти приватный чат между двумя пользователями
-     *
-     * <p>Специальный метод для мессенджера, который предотвращает создание дубликатов
-     * приватных чатов между одними и теми же пользователями.
-     *
-     * @param user1Id идентификатор первого пользователя
-     * @param user2Id идентификатор второго пользователя
-     * @param createdBy пользователь, инициирующий создание чата
-     * @return существующий или новый приватный чат
-     */
     public ChatRoom createOrGetPrivateChat(Integer user1Id, Integer user2Id, User createdBy) {
         log.info("Поиск или создание приватного чата между пользователями {} и {}", user1Id, user2Id);
 
-        // Поиск существующего приватного чата
+        // Всегда ищем существующий чат сначала
         Optional<ChatRoom> existingChat = chatRoomRepository.findPrivateChatBetweenUsers(user1Id, user2Id);
         if (existingChat.isPresent()) {
             log.info("Найден существующий приватный чат с ID: {}", existingChat.get().getId());
             return existingChat.get();
         }
 
-        // Создание нового приватного чата
+        // Создаем новый приватный чат
         ChatRoom privateChat = new ChatRoom();
         privateChat.setType(ChatRoom.ChatRoomType.PRIVATE);
         privateChat.setCreatedBy(createdBy);
         privateChat.setMaxParticipants(2);
+        privateChat.setCreatedAt(LocalDateTime.now());
+        privateChat.setUpdatedAt(LocalDateTime.now());
 
         log.info("Создание нового приватного чата для пользователей {} и {}", user1Id, user2Id);
-        return createChatRoom(privateChat);
+        ChatRoom savedChat = chatRoomRepository.save(privateChat);
+
+        // Автоматически добавляем обоих участников
+        createChatParticipant(savedChat, user1Id, "MEMBER");
+        createChatParticipant(savedChat, user2Id, "MEMBER");
+
+        log.info("Создан приватный чат ID: {} с участниками {} и {}",
+                savedChat.getId(), user1Id, user2Id);
+
+        return savedChat;
     }
+
+    /**
+     * Вспомогательный метод для создания участника чата
+     */
+    private void createChatParticipant(ChatRoom chatRoom, Integer userId, String role) {
+        ChatParticipant participant = new ChatParticipant();
+        participant.setChatRoom(chatRoom);
+        participant.setUser(userRepository.getReferenceById(userId));
+        participant.setRole(ChatParticipant.ParticipantRole.valueOf(role));
+        participant.setJoinedAt(LocalDateTime.now());
+        participant.setIsActive(true);
+        participant.setLastReadAt(LocalDateTime.now());
+
+        chatParticipantRepository.save(participant);
+        log.debug("Создан участник чата: пользователь {} в чате {}", userId, chatRoom.getId());
+    }
+
 
     /**
      * Получить все активные чат-комнаты
@@ -156,7 +252,7 @@ public class ChatRoomService {
      * <p>Позволяет изменять основные параметры чата: название, описание, аватар и т.д.
      * Автоматически обновляет временную метку изменения.
      *
-     * @param id идентификатор чат-комнаты
+     * @param id              идентификатор чат-комнаты
      * @param chatRoomDetails новые данные чат-комнаты
      * @return обновленная чат-комната
      * @throws RuntimeException если чат-комната не найдена
@@ -219,22 +315,15 @@ public class ChatRoomService {
     }
 
     /**
-     * Обновить информацию о последнем сообщении в чате
-     *
-     * <p>Критически важный метод для мессенджера, вызывается при каждой отправке сообщения.
-     * Обновляет превью чата в списке диалогов для всех участников.
-     *
-     * @param chatRoomId идентификатор чат-комнаты
-     * @param lastMessageText текст последнего сообщения
-     * @param senderId идентификатор отправителя
+     * Обновить информацию о последнем сообщении в чат-комнате.
+     * * @param chatRoomId ID чат-комнаты
+     * @param lastMessageText Текст последнего сообщения
+     * @param senderId ID отправителя последнего сообщения
      */
+    @Transactional
     public void updateLastMessageInfo(Integer chatRoomId, String lastMessageText, Integer senderId) {
-        log.debug("Обновление информации о последнем сообщении в чате: {}", chatRoomId);
-
-        LocalDateTime now = LocalDateTime.now();
-        chatRoomRepository.updateLastMessageInfo(chatRoomId, lastMessageText, senderId, now);
-
-        log.debug("Информация о последнем сообщении обновлена для чата: {}", chatRoomId);
+        // Требуется метод: updateLastMessageInfo в ChatRoomRepository
+        chatRoomRepository.updateLastMessageInfo(chatRoomId, lastMessageText, senderId, LocalDateTime.now());
     }
 
     /**
@@ -249,7 +338,7 @@ public class ChatRoomService {
     @Transactional(readOnly = true)
     public List<ChatRoom> searchChatRoomsByName(String name) {
         if (name == null || name.trim().isEmpty()) {
-            return List.of();
+            return Collections.emptyList();
         }
         return chatRoomRepository.findByNameContainingIgnoreCase(name);
     }
@@ -266,7 +355,7 @@ public class ChatRoomService {
     @Transactional(readOnly = true)
     public List<ChatRoom> searchGroupChatsByName(String name) {
         if (name == null || name.trim().isEmpty()) {
-            return List.of();
+            return Collections.emptyList();
         }
         return chatRoomRepository.searchGroupChatsByName(name);
     }
