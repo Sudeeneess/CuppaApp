@@ -21,8 +21,7 @@ import java.util.Optional;
  * с большими объемами данных в реальном времени мессенджера.
  *
  * @author Petr Panteev
- * @version 1.0
- * @since 14.10.2025
+ * @since 2025-11-29
  */
 @Repository
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Integer> {
@@ -137,10 +136,10 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Integer> {
      * <p>Критически важный метод для мессенджера - обновляет превью чата при отправке нового сообщения.
      * Устанавливает текст, отправителя и время последнего сообщения для отображения в списке чатов.
      *
-     * @param chatRoomId идентификатор чат-комнаты
-     * @param lastMessageText текст последнего сообщения
+     * @param chatRoomId          идентификатор чат-комнаты
+     * @param lastMessageText     текст последнего сообщения
      * @param lastMessageSenderId идентификатор отправителя
-     * @param lastMessageAt время отправки сообщения
+     * @param lastMessageAt       время отправки сообщения
      */
     @Modifying
     @Query("UPDATE ChatRoom cr SET cr.lastMessageText = :lastMessageText, " +
@@ -188,4 +187,32 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Integer> {
      */
     @Query("SELECT COUNT(cr) FROM ChatRoom cr WHERE cr.isActive = true")
     long countActiveChatRooms();
+
+    /**
+     * Найти все чат-комнаты, в которых состоит пользователь по его ID
+     *
+     * <p>Выполняет JOIN с таблицей участников (ChatParticipant) для фильтрации.
+     * Используется для получения списка чатов, релевантных текущему пользователю.
+     *
+     * @param userId идентификатор текущего аутентифицированного пользователя
+     * @return список чат-комнат, где пользователь является активным участником
+     */
+    @Query("SELECT cr FROM ChatRoom cr " +
+            "JOIN ChatParticipant cp ON cp.chatRoom.id = cr.id " +
+            "WHERE cp.user.id = :userId AND cr.isActive = true " +
+            "ORDER BY cr.lastMessageAt DESC")
+    List<ChatRoom> findChatRoomsByUserId(@Param("userId") Integer userId);
+
+    /**
+     * Найти все активные чат-комнаты, в которых участвует указанный пользователь
+     *
+     * <p>Используется для получения списка чатов, доступных пользователю в интерфейсе.
+     *
+     * @param participantId идентификатор пользователя (участника)
+     * @return список чат-комнат
+     */
+    @Query("SELECT cr FROM ChatRoom cr " +
+            "JOIN ChatParticipant cp ON cp.chatRoom.id = cr.id " +
+            "WHERE cp.user.id = :participantId AND cr.isActive = true")
+    List<ChatRoom> findChatRoomsByParticipantId(@Param("participantId") Integer participantId);
 }

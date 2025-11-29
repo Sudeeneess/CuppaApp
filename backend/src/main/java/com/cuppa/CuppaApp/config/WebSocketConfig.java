@@ -16,9 +16,8 @@ import java.util.List;
  * <p>Настраивает STOMP поверх WebSocket для обмена сообщениями в реальном времени
  * между клиентами и сервером. Включает настройки безопасности CORS.
  *
- * @author Pleskova Walerya
- * @version 2.1
- * @since 2025-10-28
+ * @author Walerya Pleskova
+ * @since 2025-11-29
  */
 @Configuration
 @EnableWebSocketMessageBroker
@@ -61,12 +60,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        //  НАСТРОЙКИ CORS ДЛЯ WEB SOCKET
+        // НАСТРОЙКИ CORS ДЛЯ WEB SOCKET
         String[] allowedOriginPatterns = getAllAllowedOriginPatterns();
 
         // Регистрируем endpoint для WebSocket с SockJS fallback
         registry.addEndpoint("/ws-chat")
-                .setAllowedOriginPatterns(allowedOriginPatterns) //Только разрешенные домены
+                .setAllowedOriginPatterns(allowedOriginPatterns) // Только разрешенные домены
                 .withSockJS(); // Fallback для старых браузеров
     }
 
@@ -79,7 +78,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         List<String> origins = Arrays.asList(allowedOrigins.split(","));
 
         // Добавляем localhost паттерны для разработки
-
         return new String[] {
                 "http://localhost:3000",
                 "http://localhost:5173",

@@ -2,6 +2,7 @@ package com.cuppa.CuppaApp.dto;
 
 import com.cuppa.CuppaApp.entity.ChatParticipant;
 import lombok.Data;
+
 import java.time.LocalDateTime;
 
 /**
@@ -19,8 +20,7 @@ import java.time.LocalDateTime;
  * </ul>
  *
  * @author Walerya Pleskova
- * @version 1.0
- * @since 2025-10-14
+ * @since 2025-11-29
  */
 @Data
 public class ChatParticipantDto {
@@ -81,6 +81,18 @@ public class ChatParticipantDto {
      * Может быть null если пользователь еще не читал сообщения.
      */
     private LocalDateTime lastReadAt;
+
+    /**
+     * Флаг, указывающий, находится ли пользователь онлайн.
+     * Требует интеграции с UserActivityService/WebSocket-статусом.
+     */
+    private Boolean isOnline;
+
+    /**
+     * Дата и время последнего посещения (для оффлайн пользователей).
+     * Требует интеграции с UserActivityService.
+     */
+    private LocalDateTime lastSeen;
 
     /**
      * Преобразует сущность ChatParticipant в DTO объект.

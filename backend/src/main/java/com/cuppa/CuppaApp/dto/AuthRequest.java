@@ -9,14 +9,12 @@ package com.cuppa.CuppaApp.dto;
  *   <li>{@code POST /api/auth/register} - регистрация нового пользователя</li>
  *   <li>{@code POST /api/auth/login} - аутентификация существующего пользователя</li>
  * </ul>
- * </p>
  *
  * <p><b>Примечание:</b> Для регистрации обычно требуются все поля,
  * для входа - только email и password.</p>
  *
  * @author Walerya Pleskova
- * @version 1.0
- * @since 2025-10-06
+ * @since 2025-11-29
  */
 public class AuthRequest {
     private String email;

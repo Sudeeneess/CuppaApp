@@ -1,8 +1,13 @@
 package com.cuppa.CuppaApp.controllers;
 
+import com.cuppa.CuppaApp.dto.ChatRoomDto;
+import com.cuppa.CuppaApp.dto.CreateChatRequest;
+import com.cuppa.CuppaApp.dto.UpdateChatRequest;
 import com.cuppa.CuppaApp.entity.ChatRoom;
 import com.cuppa.CuppaApp.entity.User;
 import com.cuppa.CuppaApp.service.ChatRoomService;
+import com.cuppa.CuppaApp.service.SecurityService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -11,13 +16,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.cuppa.CuppaApp.dto.ChatRoomDto;
-import com.cuppa.CuppaApp.dto.CreateChatRequest;
-import com.cuppa.CuppaApp.dto.UpdateChatRequest;
-import jakarta.validation.Valid;
 
-import java.util.stream.Collectors;
-
+import java.security.Principal;
 import java.util.List;
 
 /**
@@ -30,8 +30,7 @@ import java.util.List;
  *
  * @author Walerya Pleskova
  * @author Petr Panteev
- * @version 1.0
- * @since 14.10.2025
+ * @since 2025-11-29
  */
 @RestController
 @RequestMapping("/api/chat-rooms")
@@ -39,24 +38,22 @@ import java.util.List;
 public class ChatRoomController {
 
     private final ChatRoomService chatRoomService;
+    private final SecurityService securityService;
 
     /**
-     * Получить список всех активных чат-комнат
+     * Получить список чат-комнат для текущего аутентифицированного пользователя.
      *
-     * <p>Используется для загрузки общего списка чатов в интерфейсе мессенджера.
-     * Возвращает только активные чаты, отсортированные по времени последнего сообщения.
+     * <p>Заменяет нефильтрованный метод getAllChatRooms().
+     * Использует Principal для извлечения ID текущего пользователя.
      *
-     * <p>Использует DTO для безопасного возврата данных клиенту.
-     *
-     * @return ResponseEntity со списком активных чат-комнат в формате DTO
+     * @param principal объект аутентификации Spring Security
+     * @return ResponseEntity со списком чат-комнат в формате DTO, отфильтрованных по пользователю
      */
     @GetMapping
-    public ResponseEntity<List<ChatRoomDto>> getAllChatRooms() {
+    public ResponseEntity<List<ChatRoomDto>> getChatRoomsForCurrentUser(Principal principal) {
         try {
-            List<ChatRoom> chatRooms = chatRoomService.getChatRoomsOrderedByLastMessage();
-            List<ChatRoomDto> dtos = chatRooms.stream()
-                    .map(ChatRoomDto::fromEntity)
-                    .collect(Collectors.toList());
+            Integer currentUserId = securityService.getAuthenticatedUserId(principal);
+            List<ChatRoomDto> dtos = chatRoomService.getChatRoomsForUser(currentUserId);
             return ResponseEntity.ok(dtos);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -100,7 +97,6 @@ public class ChatRoomController {
     @PostMapping
     public ResponseEntity<?> createChatRoom(@RequestBody @Valid CreateChatRequest request) {
         try {
-            // Конвертируем DTO в Entity для сохранения в базу
             ChatRoom chatRoom = new ChatRoom();
             chatRoom.setName(request.getName());
             chatRoom.setType(request.getType());
@@ -162,12 +158,10 @@ public class ChatRoomController {
      * @param id      идентификатор чат-комнаты
      * @param request DTO с новыми данными чат-комнаты
      * @return ResponseEntity с обновленной чат-комнатой в формате DTO
-     * @author Walerya Pleskova
      */
     @PutMapping("/{id}")
     public ResponseEntity<?> updateChatRoom(@PathVariable Integer id, @RequestBody @Valid UpdateChatRequest request) {
         try {
-            // Конвертируем DTO в Entity для обновления
             ChatRoom chatRoomDetails = new ChatRoom();
             chatRoomDetails.setName(request.getName());
             chatRoomDetails.setAvatarUrl(request.getAvatarUrl());

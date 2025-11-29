@@ -9,9 +9,11 @@ import com.cuppa.CuppaApp.repository.UserRepository;
 import com.cuppa.CuppaApp.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy; // ← ИСПРАВЛЕННЫЙ ИМПОРТ
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,17 +21,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Сервис для работы с сообщениями в чат-комнатах
- *
- * <p>Обеспечивает бизнес-логику для работы с сообщениями:
- * создание, редактирование, поиск и управление статусами сообщений.
- * Конвертирует сущности в DTO и обратно для безопасной передачи данных.
- *
- * @author Petr Panteev, Walerya Pleskova
- * @version 1.1
- * @since 15.10.2025
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -37,18 +28,12 @@ import java.util.stream.Collectors;
 public class MessageService {
 
     private final MessageRepository messageRepository;
-    private final ChatRoomService chatRoomService;
+    private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatRoomRepository chatRoomRepository;
-    private final UserRepository userRepository;
 
-    /**
-     * Получение сообщения по идентификатору
-     *
-     * @param id идентификатор сообщения
-     * @return DTO сообщения
-     * @throws RuntimeException если сообщение не найдено
-     */
+
+    // ... остальные методы без изменений ...
     @Transactional(readOnly = true)
     public MessageDto getMessageById(Integer id) {
         Message message = messageRepository.findById(id)
@@ -56,239 +41,132 @@ public class MessageService {
         return MessageDto.fromEntity(message);
     }
 
-    /**
-     * Получение истории сообщений чата с пагинацией
-     *
-     * @param chatId   идентификатор чат-комнаты
-     * @param pageable параметры пагинации
-     * @return страница с DTO сообщений
-     */
     @Transactional(readOnly = true)
     public Page<MessageDto> getMessagesByChatId(Integer chatId, Pageable pageable) {
         return messageRepository.findByChatRoomIdOrderBySentAtDesc(chatId, pageable)
                 .map(MessageDto::fromEntity);
     }
 
-    /**
-     * Создает и сохраняет новое сообщение в указанном чате.
-     *
-     * <p>Метод выполняет следующие операции:
-     * <ol>
-     *   <li>Валидирует существование чата и отправителя в базе данных</li>
-     *   <li>Создает новую сущность сообщения на основе DTO</li>
-     *   <li>Устанавливает тип сообщения с обработкой невалидных значений</li>
-     *   <li>Сохраняет сообщение в базу данных</li>
-     *   <li>Обновляет информацию о последнем сообщении в чате</li>
-     *   <li>Возвращает DTO созданного сообщения</li>
-     * </ol>
-     *
-     * <p><b>Валидация:</b>
-     * <ul>
-     *   <li>Чат должен существовать в базе данных</li>
-     *   <li>Отправитель должен существовать в базе данных</li>
-     *   <li>Тип сообщения валидируется, при ошибке устанавливается TEXT по умолчанию</li>
-     * </ul>
-     *
-     * @param messageDto DTO с данными для создания сообщения. Должен содержать:
-     *                  <ul>
-     *                    <li>{@code chatRoomId} - идентификатор чата (обязательно)</li>
-     *                    <li>{@code senderId} - идентификатор отправителя (обязательно)</li>
-     *                    <li>{@code content} - текст сообщения</li>
-     *                    <li>{@code messageType} - тип сообщения (TEXT, IMAGE, FILE, etc.)</li>
-     *                  </ul>
-     *
-     * @return MessageDto созданного сообщения с заполненными полями:
-     *         <ul>
-     *           <li>ID сообщения</li>
-     *           <li>Дата и время отправки</li>
-     *           <li>Имя отправителя</li>
-     *           <li>Статусы доставки и прочтения</li>
-     *         </ul>
-     *
-     * @throws RuntimeException если чат не найден с указанным ID
-     * @throws RuntimeException если пользователь не найден с указанным ID
-     *
-     * @example
-     * <pre>{@code
-     * // Создание текстового сообщения
-     * MessageDto messageDto = new MessageDto();
-     * messageDto.setChatRoomId(1);
-     * messageDto.setSenderId(123);
-     * messageDto.setContent("Привет, как дела?");
-     * messageDto.setMessageType("TEXT");
-     *
-     * MessageDto createdMessage = messageService.createMessage(messageDto);
-     *
-     * // Результат:
-     * // MessageDto{
-     * //   id=456,
-     * //   content="Привет, как дела?",
-     * //   senderId=123,
-     * //   senderName="Иван Иванов",
-     * //   chatRoomId=1,
-     * //   messageType="TEXT",
-     * //   sentAt=2025-01-16T18:30:00,
-     * //   isEdited=false,
-     * //   deliveredAt=null,
-     * //   readAt=null
-     * // }
-     * }</pre>
-     *
-     * @see Message
-     * @see MessageDto
-     * @see ChatRoom
-     * @see User
-     * @see Message.MessageType
-     *
-     * @implNote Временная метка отправки устанавливается автоматически как текущее время сервера
-     * @implNote При невалидном типе сообщения автоматически устанавливается TEXT
-     * @implNote Информация о последнем сообщении в чате обновляется автоматически
-     */
     public MessageDto createMessage(MessageDto messageDto) {
-        log.info("Создание сообщения в чате {} от пользователя {}",
-                messageDto.getChatRoomId(), messageDto.getSenderId());
+        log.info("Создание нового сообщения в чате ID: {}", messageDto.getChatRoomId());
 
         ChatRoom chatRoom = chatRoomRepository.findById(messageDto.getChatRoomId())
                 .orElseThrow(() -> new RuntimeException("Чат не найден с ID: " + messageDto.getChatRoomId()));
 
         User sender = userRepository.findById(messageDto.getSenderId())
-                .orElseThrow(() -> new RuntimeException("Пользователь не найден с ID: " + messageDto.getSenderId()));
+                .orElseThrow(() -> new RuntimeException("Пользователь (отправитель) не найден с ID: " + messageDto.getSenderId()));
 
         Message message = new Message();
-        message.setContent(messageDto.getContent());
         message.setChatRoom(chatRoom);
         message.setSender(sender);
+        message.setContent(messageDto.getContent());
 
-        // Безопасно устанавливаем тип сообщения
+        LocalDateTime now = LocalDateTime.now();
+        message.setSentAt(now);
+        message.setDeliveredAt(now);
+        message.setReadAt(now);
+
         try {
-            message.setMessageType(Message.MessageType.valueOf(messageDto.getMessageType()));
+            Message.MessageType type = Message.MessageType.valueOf(messageDto.getMessageType().toUpperCase());
+            message.setMessageType(type);
         } catch (IllegalArgumentException e) {
+            log.warn("Неверный тип сообщения '{}'. Установлен тип TEXT.", messageDto.getMessageType());
             message.setMessageType(Message.MessageType.TEXT);
         }
 
-        message.setSentAt(LocalDateTime.now());
-
         Message savedMessage = messageRepository.save(message);
+        log.info("Сообщение ID: {} успешно сохранено", savedMessage.getId());
 
-        // Обновляем информацию о последнем сообщении в чате
-        chatRoomService.updateLastMessageInfo(
-                messageDto.getChatRoomId(),
-                messageDto.getContent(),
-                messageDto.getSenderId()
+        // ЗАМЕНИТЕ вызов chatRoomService на прямой вызов репозитория
+        chatRoomRepository.updateLastMessageInfo(
+                chatRoom.getId(),
+                savedMessage.getContent(),
+                savedMessage.getSender().getId(),
+                LocalDateTime.now()
         );
 
-        log.info("Сообщение создано с ID: {}", savedMessage.getId());
         return MessageDto.fromEntity(savedMessage);
     }
 
-    /**
-     * Редактирование существующего сообщения
-     *
-     * @param id         идентификатор сообщения
-     * @param messageDto DTO с обновленными данными
-     * @return обновленное DTO сообщения
-     * @throws RuntimeException если сообщение не найдено
-     */
-    public MessageDto updateMessage(Integer id, MessageDto messageDto) {
-        Message message = messageRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Сообщение не найдено с ID: " + id));
-
-        message.setContent(messageDto.getContent());
-        message.setIsEdited(true);
-        message.setEditedAt(LocalDateTime.now());
-
-        Message updatedMessage = messageRepository.save(message);
-        return MessageDto.fromEntity(updatedMessage);
-    }
-
-    /**
-     * Удаление сообщения
-     *
-     * @param id идентификатор сообщения
-     * @throws RuntimeException если сообщение не найдено
-     */
-    public void deleteMessage(Integer id) {
-        Message message = messageRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Сообщение не найдено с ID: " + id));
-
-        messageRepository.delete(message);
-    }
-
-    /**
-     * Поиск сообщений по содержимому в указанном чате
-     *
-     * @param chatId   идентификатор чат-комнаты
-     * @param query    текст для поиска
-     * @param pageable параметры пагинации
-     * @return страница с найденными сообщениями
-     */
     @Transactional(readOnly = true)
-    public Page<MessageDto> searchMessages(Integer chatId, String query, Pageable pageable) {
-        return messageRepository.findByChatRoomIdAndContentContainingIgnoreCase(chatId, query, pageable)
-                .map(MessageDto::fromEntity);
-    }
-
-    /**
-     * Создает сообщение и отправляет через WebSocket
-     */
-    public MessageDto createAndBroadcastMessage(MessageDto messageDto) {
-        MessageDto savedMessage = createMessage(messageDto);
-
-        // Отправляем через WebSocket всем подписчикам
-        messagingTemplate.convertAndSend(
-                "/topic/chat/" + messageDto.getChatRoomId(),
-                savedMessage
-        );
-
-        return savedMessage;
-    }
-
-    /**
-     * Получение сообщений определенного типа в чате
-     *
-     * @param chatId      идентификатор чат-комнаты
-     * @param messageType тип сообщения
-     * @return список сообщений указанного типа
-     */
-    @Transactional(readOnly = true)
-    public List<MessageDto> getMessagesByType(Integer chatId, String messageType) {
+    public List<MessageDto> getMessagesByChatIdAndType(Integer chatId, String messageType) {
         Message.MessageType type = Message.MessageType.valueOf(messageType.toUpperCase());
         return messageRepository.findByChatRoomIdAndMessageType(chatId, type).stream()
                 .map(MessageDto::fromEntity)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Получение последнего сообщения в чате
-     *
-     * @param chatId идентификатор чат-комнаты
-     * @return последнее сообщение или null если сообщений нет
-     */
     @Transactional(readOnly = true)
     public MessageDto getLastMessageByChatId(Integer chatId) {
         Message lastMessage = messageRepository.findLastMessageByChatId(chatId);
         return lastMessage != null ? MessageDto.fromEntity(lastMessage) : null;
     }
 
-    /**
-     * Обновление статуса прочтения для группы сообщений
-     *
-     * @param chatId идентификатор чат-комнаты
-     */
     public void markMessagesAsRead(Integer chatId) {
-        // В реальном приложении здесь будет логика отметки сообщений как прочитанных
-        // для конкретного пользователя с использованием времени lastReadAt
         log.info("Сообщения в чате ID: {} отмечены как прочитанные", chatId);
     }
 
-    /**
-     * Получение количества сообщений в чате
-     *
-     * @param chatId идентификатор чат-комнаты
-     * @return количество сообщений в чате
-     */
     @Transactional(readOnly = true)
     public Long getMessageCount(Integer chatId) {
         return messageRepository.countByChatRoomId(chatId);
+    }
+
+    @Transactional(readOnly = true)
+    public Integer countUnreadMessages(Integer chatRoomId, LocalDateTime lastReadTime, Integer currentUserId) {
+        if (lastReadTime == null) {
+            return messageRepository.countByChatRoomIdAndSenderIdNot(chatRoomId, currentUserId).intValue();
+        }
+        return messageRepository.countUnreadMessagesAfterTime(chatRoomId, lastReadTime, currentUserId).intValue();
+    }
+
+    @Transactional
+    public MessageDto updateMessage(Integer messageId, MessageDto updatedMessageDto, Integer senderId) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("Сообщение не найдено с ID: " + messageId));
+
+        if (!message.getSender().getId().equals(senderId)) {
+            throw new AccessDeniedException("У вас нет прав для редактирования этого сообщения.");
+        }
+
+        message.setContent(updatedMessageDto.getContent());
+        message.setIsEdited(true);
+        message.setEditedAt(LocalDateTime.now());
+
+        message = messageRepository.save(message);
+        return MessageDto.fromEntity(message);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MessageDto> getMessagesByType(Integer chatId, String messageType) {
+        Message.MessageType type;
+        try {
+            type = Message.MessageType.valueOf(messageType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn("Попытка фильтрации по неизвестному типу сообщения: {}", messageType);
+            return List.of();
+        }
+
+        return messageRepository.findByChatRoomIdAndMessageType(chatId, type).stream()
+                .map(MessageDto::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteMessage(Integer messageId, Integer currentUserId) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("Сообщение не найдено с ID: " + messageId));
+
+        if (!message.getSender().getId().equals(currentUserId)) {
+            throw new AccessDeniedException("У вас нет прав для удаления этого сообщения.");
+        }
+
+        messageRepository.delete(message);
+        log.info("Сообщение ID: {} удалено пользователем ID: {}", messageId, currentUserId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<MessageDto> searchMessages(Integer chatId, String query, Pageable pageable) {
+        Page<Message> messagePage = messageRepository.findByChatRoomIdAndContentContainingIgnoreCase(chatId, query, pageable);
+        return messagePage.map(MessageDto::fromEntity);
     }
 }

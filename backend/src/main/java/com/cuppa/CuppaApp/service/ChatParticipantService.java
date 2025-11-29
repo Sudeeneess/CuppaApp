@@ -9,6 +9,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.cuppa.CuppaApp.service.UserActivityService;
+import com.cuppa.CuppaApp.repository.ChatRoomRepository;
+import com.cuppa.CuppaApp.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,17 +27,14 @@ import java.util.stream.Collectors;
 public class ChatParticipantService {
 
     private final ChatParticipantRepository chatParticipantRepository;
+    private final UserActivityService userActivityService;
+    private final ChatRoomRepository chatRoomRepository;
+    private final UserRepository userRepository;
 
     public ChatParticipantDto getChatParticipantById(Integer id) {
         ChatParticipant participant = chatParticipantRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Участник чата не найден с ID: " + id));
         return ChatParticipantDto.fromEntity(participant);
-    }
-
-    public List<ChatParticipantDto> getChatParticipantsByChatId(Integer chatId) {
-        return chatParticipantRepository.findByChatRoomId(chatId).stream()
-                .map(ChatParticipantDto::fromEntity)
-                .collect(Collectors.toList());
     }
 
     public Page<ChatParticipantDto> getActiveChatParticipants(Integer chatId, Pageable pageable) {
@@ -43,9 +43,32 @@ public class ChatParticipantService {
     }
 
     public ChatParticipantDto createChatParticipant(ChatParticipantDto chatParticipantDto) {
-        // Здесь должна быть логика создания участника чата
-        // В реальном приложении нужно будет создать сущность из DTO
-        throw new UnsupportedOperationException("Метод создания участника чата будет реализован позже");
+        log.info("Создание участника чата для пользователя ID: {} в чате ID: {}",
+                chatParticipantDto.getUserId(), chatParticipantDto.getChatRoomId());
+
+        // Проверяем, не существует ли уже такой участник
+        chatParticipantRepository.findByChatRoomIdAndUserId(
+                chatParticipantDto.getChatRoomId(),
+                chatParticipantDto.getUserId()
+        ).ifPresent(participant -> {
+            throw new RuntimeException("Пользователь уже является участником этого чата");
+        });
+
+        // Создаем нового участника чата
+        ChatParticipant participant = new ChatParticipant();
+        participant.setChatRoom(chatRoomRepository.getReferenceById(chatParticipantDto.getChatRoomId()));
+        participant.setUser(userRepository.getReferenceById(chatParticipantDto.getUserId()));
+        participant.setRole(ChatParticipant.ParticipantRole.valueOf(
+                chatParticipantDto.getRole() != null ? chatParticipantDto.getRole() : "MEMBER"
+        ));
+        participant.setJoinedAt(LocalDateTime.now());
+        participant.setIsActive(true);
+        participant.setLastReadAt(LocalDateTime.now());
+
+        ChatParticipant savedParticipant = chatParticipantRepository.save(participant);
+        log.info("Участник чата создан с ID: {}", savedParticipant.getId());
+
+        return ChatParticipantDto.fromEntity(savedParticipant);
     }
 
     public ChatParticipantDto updateParticipantRole(Integer id, String role) {
@@ -92,4 +115,35 @@ public class ChatParticipantService {
 
         return ChatParticipantDto.fromEntity(participant);
     }
+
+    /**
+     * Возвращает Entity. Используется ChatRoomService для получения lastReadAt.
+     */
+    @Transactional(readOnly = true)
+    public ChatParticipant findParticipantEntityByChatAndUser(Integer chatId, Integer userId) {
+        // Убрал .orElseThrow, чтобы ChatRoomService мог обработать null
+        return chatParticipantRepository.findByChatRoomIdAndUserId(chatId, userId).orElse(null);
+    }
+
+    /**
+     * Вспомогательный метод для маппинга Entity в DTO с добавлением статуса.
+     * Использует инжектированный UserActivityService.
+     */
+    private ChatParticipantDto mapEntityToDtoWithStatus(ChatParticipant participant) {
+        ChatParticipantDto dto = ChatParticipantDto.fromEntity(participant);
+        Integer userId = participant.getUser().getId();
+
+        dto.setIsOnline(userActivityService.isUserOnline(userId));
+        dto.setLastSeen(userActivityService.getLastSeen(userId));
+
+        return dto;
+    }
+
+    public List<ChatParticipantDto> getChatParticipantsByChatId(Integer chatId) {
+        return chatParticipantRepository.findByChatRoomId(chatId).stream()
+                .map(this::mapEntityToDtoWithStatus)
+                .collect(Collectors.toList());
+    }
+
+
 }
