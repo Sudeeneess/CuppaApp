@@ -1,144 +1,307 @@
+// services/auth-service.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { User, LoginCredentials, RegisterData } from "@/constants/types";
 
-// --- Интерфейсы ---
+// ==================== КОНСТАНТЫ И ТИПЫ ====================
 
-export interface User {
-  id: number; // На основе документации, user id
-  email: string;
-  username: string;
-  // firstName и lastName могут быть добавлены, если они нужны в клиентском User
-}
+/**
+ * Базовый URL API сервера
+ */
+const API_BASE_URL = "http://localhost:8080/api";
 
-export interface Credentials {
-  email: string;
-  password: string;
-}
+/**
+ * Ключи для хранения данных в AsyncStorage
+ */
+const STORAGE_KEYS = {
+  AUTH_TOKEN: 'authToken',
+  USER_ID: 'userId',
+  USERNAME: 'username',
+  EMAIL: 'email',
+} as const;
 
-// Интерфейс для данных регистрации
-// Соответствует Телу запроса в POST /auth/register
-export interface SignUpData extends Credentials {
-  username: string;
-  firstName: string;
-  lastName: string;
-}
-
-// Интерфейс ответа API для входа и регистрации
-// Использует поля из "Ответ" для POST /auth/register и POST /auth/login
+/**
+ * Ответ сервера на успешную аутентификацию
+ */
 interface AuthResponse {
   accessToken: string;
   tokenType: "Bearer";
-  userId: number; // 'id' пользователя
+  userId: number;
   username: string;
   email: string;
 }
 
-// --- Сервис API ---
+/**
+ * Ошибка аутентификации с дополнительной информацией
+ */
+class AuthError extends Error {
+  constructor(
+    message: string,
+    public statusCode?: number,
+    public responseText?: string
+  ) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
 
-// Установите базовый URL вашего бэкенда
-// Используем "http://localhost:8080/api" из документации
-const API_BASE_URL = "http://localhost:8080/api";
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 
+/**
+ * Сохраняет данные аутентификации в AsyncStorage
+ */
+const storeAuthData = async (responseData: AuthResponse): Promise<void> => {
+  try {
+    await Promise.all([
+      AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, responseData.accessToken),
+      AsyncStorage.setItem(STORAGE_KEYS.USER_ID, responseData.userId.toString()),
+      AsyncStorage.setItem(STORAGE_KEYS.USERNAME, responseData.username),
+      AsyncStorage.setItem(STORAGE_KEYS.EMAIL, responseData.email),
+    ]);
+  } catch (error) {
+    console.error('Ошибка сохранения данных аутентификации:', error);
+    throw new AuthError('Не удалось сохранить данные сессии');
+  }
+};
+
+/**
+ * Очищает данные аутентификации из AsyncStorage
+ */
+const clearAuthData = async (): Promise<void> => {
+  try {
+    await Promise.all(
+      Object.values(STORAGE_KEYS).map(key =>
+        AsyncStorage.removeItem(key)
+      )
+    );
+  } catch (error) {
+    console.error('Ошибка очистки данных аутентификации:', error);
+    throw new AuthError('Не удалось завершить сессию');
+  }
+};
+
+/**
+ * Выполняет HTTP запрос с обработкой ошибок
+ */
+const fetchWithAuth = async <T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
+      },
+    });
+
+    const responseText = await response.text();
+
+    if (!response.ok) {
+      console.error(`HTTP ${response.status}: ${responseText}`);
+
+      // Пытаемся распарсить JSON ошибки
+      let errorMessage = `Ошибка ${response.status}`;
+      try {
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        // Если не JSON, используем текст ответа
+        if (responseText) {
+          errorMessage = `${errorMessage}: ${responseText}`;
+        }
+      }
+
+      throw new AuthError(errorMessage, response.status, responseText);
+    }
+
+    // Пустой ответ (например, при logout)
+    if (!responseText) {
+      return {} as T;
+    }
+
+    return JSON.parse(responseText) as T;
+  } catch (error) {
+    if (error instanceof AuthError) {
+      throw error;
+    }
+
+    console.error('Ошибка сети при выполнении запроса:', error);
+    throw new AuthError('Ошибка сети. Проверьте подключение к интернету');
+  }
+};
+
+// ==================== СЕРВИС АУТЕНТИФИКАЦИИ ====================
+
+/**
+ * Сервис для управления аутентификацией пользователя
+ *
+ * @service
+ * @description
+ * Предоставляет методы для входа, регистрации и выхода пользователя.
+ * Управляет хранением токенов и данных пользователя в AsyncStorage.
+ */
 export const authService = {
   /**
-   * Выполняет вход пользователя. Соответствует POST /api/auth/login
+   * Авторизация пользователя
+   *
+   * @param {LoginCredentials} credentials - Данные для входа
+   * @returns {Promise<User>} Данные авторизованного пользователя
+   * @throws {AuthError} При ошибке аутентификации
    */
-  async signIn(credentials: Credentials): Promise<User> {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(credentials),
-    });
+  async signIn(credentials: LoginCredentials): Promise<User> {
+    console.log('Попытка авторизации пользователя:', credentials.email);
 
-    if (!response.ok) {
-      // Пытаемся получить сообщение об ошибке, если оно есть
+    try {
+      const responseData = await fetchWithAuth<AuthResponse>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      });
+
+      // Сохраняем данные аутентификации
+      await storeAuthData(responseData);
+
+      console.log('Авторизация успешна:', {
+        userId: responseData.userId,
+        username: responseData.username,
+      });
+
+      return {
+        id: responseData.userId,
+        email: responseData.email,
+        username: responseData.username,
+      };
+    } catch (error) {
+      console.error('Ошибка авторизации:', error);
+
+      // Очищаем данные при ошибке
       try {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message || "Ошибка входа. Проверьте учетные данные."
-        );
+        await clearAuthData();
       } catch {
-        throw new Error(`Ошибка входа. Статус: ${response.status}`);
+        // Игнорируем ошибки очистки
       }
+
+      throw error;
     }
-
-    // 1. Получаем данные из ответа
-    const responseData: AuthResponse = await response.json();
-
-    console.log("ploho" + responseData.accessToken);
-
-    // 2. Сохраняем токен (accessToken)
-    await AsyncStorage.setItem("authToken", responseData.accessToken);
-
-    // 3. Возвращаем данные пользователя, очищенные от токена
-    return {
-      id: responseData.userId,
-      email: responseData.email,
-      username: responseData.username,
-    };
   },
 
   /**
-   * Выполняет регистрацию нового пользователя. Соответствует POST /api/auth/register
+   * Регистрация нового пользователя
+   *
+   * @param {RegisterData} signUpData - Данные для регистрации
+   * @returns {Promise<User>} Данные зарегистрированного пользователя
+   * @throws {AuthError} При ошибке регистрации
    */
-  async signUp(signUpData: SignUpData): Promise<User> {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(signUpData),
-    });
+  async signUp(signUpData: RegisterData): Promise<User> {
+    console.log('Попытка регистрации пользователя:', signUpData.username);
 
-    if (!response.ok) {
+    try {
+      // Преобразуем имена полей к формату ожидаемому бэкендом
+      const requestData = {
+        email: signUpData.email,
+        password: signUpData.password,
+        username: signUpData.username,
+        first_name: signUpData.firstName,
+        last_name: signUpData.lastName,
+      };
+
+      const responseData = await fetchWithAuth<AuthResponse>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(requestData),
+      });
+
+      // Сохраняем данные аутентификации
+      await storeAuthData(responseData);
+
+      console.log('Регистрация успешна:', {
+        userId: responseData.userId,
+        username: responseData.username,
+      });
+
+      return {
+        id: responseData.userId,
+        email: responseData.email,
+        username: responseData.username,
+      };
+    } catch (error) {
+      console.error('Ошибка регистрации:', error);
+
+      // Очищаем данные при ошибке
       try {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Ошибка регистрации.");
+        await clearAuthData();
       } catch {
-        throw new Error(`Ошибка регистрации. Статус: ${response.status}`);
+        // Игнорируем ошибки очистки
       }
+
+      throw error;
     }
-
-    // 1. Получаем данные из ответа
-    const responseData: AuthResponse = await response.json();
-
-    // 2. Сохраняем токен (accessToken)
-    await AsyncStorage.setItem("authToken", responseData.accessToken);
-
-    // 3. Возвращаем данные пользователя
-    return {
-      id: responseData.userId,
-      email: responseData.email,
-      username: responseData.username,
-    };
   },
 
   /**
-   * Выполняет выход пользователя. Соответствует POST /api/auth/logout
+   * Выход из системы
+   *
+   * @returns {Promise<void>}
+   * @throws {AuthError} При ошибке выхода
    */
   async signOut(): Promise<void> {
-    // 1. Получаем токен для запроса на выход
-    const authToken = await AsyncStorage.getItem("authToken");
+    console.log('Завершение сессии пользователя');
 
-    // 2. Очистка токена/сессии на стороне клиента (первый приоритет)
-    await AsyncStorage.removeItem("authToken");
-
-    // 3. Запрос к API для инвалидации сессии/токена на бэкенде
     try {
-      if (authToken) {
-        await fetch(`${API_BASE_URL}/auth/logout`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
+      // Отправляем запрос на сервер для инвалидации токена
+      try {
+        await fetchWithAuth('/auth/logout', {
+          method: 'POST',
         });
+      } catch (error) {
+        // Логируем, но не прерываем процесс выхода
+        console.warn('Ошибка при вызове logout API:', error);
       }
-      // Ошибки при logout часто игнорируются, так как клиентская очистка уже прошла
-    } catch (e) {
-      console.error("Ошибка при запросе /api/auth/logout:", e);
+
+      // Очищаем локальные данные
+      await clearAuthData();
+
+      console.log('Сессия успешно завершена');
+    } catch (error) {
+      console.error('Ошибка при выходе из системы:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Получает текущий токен аутентификации
+   *
+   * @returns {Promise<string | null>} Токен или null если не авторизован
+   */
+  async getToken(): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    } catch (error) {
+      console.error('Ошибка получения токена:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Проверяет, авторизован ли пользователь
+   *
+   * @returns {Promise<boolean>} true если пользователь авторизован
+   */
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      const token = await this.getToken();
+      return !!token;
+    } catch (error) {
+      console.error('Ошибка проверки авторизации:', error);
+      return false;
     }
   },
 };
+
+// Экспорт типов для использования в других модулях
+export type { LoginCredentials, RegisterData };
+export { AuthError };

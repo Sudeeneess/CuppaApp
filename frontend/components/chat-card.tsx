@@ -1,120 +1,4 @@
-/*import * as React from "react";
-import {
-  View,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-} from "react-native";
-import { Card, Avatar, Text, useTheme, Badge } from "react-native-paper";
-
-export interface ChatData {
-  id: string;
-  name: string;
-  lastMessage: string;
-  time: string;
-  unreadCount: number;
-  avatarUrl: string;
-}
-
-interface ChatCardProps {
-  item: ChatData;
-  onPress: (item: ChatData) => void;
-}
-
-const SquareAvatar = ({ avatarUrl }: ChatData) => (
-  <Image
-    source={{ uri: avatarUrl }}
-    style={{ borderRadius: 12, width: 72, height: 72 }}
-  />
-);
-
-export function ChatCard({ item, onPress }: ChatCardProps) {
-  const theme = useTheme();
-  const isUnread = item.unreadCount > 0;
-
-  return (
-    <TouchableOpacity
-      onPress={() => onPress(item)}
-      activeOpacity={0.7}
-      style={{ marginVertical: 8 }}
-    >
-      <Card mode="elevated" style={{ alignContent: "flex-start" }}>
-        <Card.Title
-          title={item.name}
-          subtitle={"fdfs"}
-          left={() => SquareAvatar(item)}
-          right={() => <Badge> 67 </Badge>}
-          style={{ paddingLeft: 0 }}
-          titleStyle={{ paddingLeft: 32 }}
-          subtitleStyle={{ paddingLeft: 32 }}
-        />
-      </Card>
-    </TouchableOpacity>
-  );
-}
-
-const styles = StyleSheet.create({
-  listContainer: {
-    padding: 10,
-    // Убрали жесткий цвет, он теперь в contentContainerStyle
-  },
-  card: {
-    marginVertical: 6,
-    borderRadius: 16,
-    overflow: "visible",
-  },
-  cardContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    paddingRight: 20,
-  },
-  avatar: {
-    marginRight: 15,
-  },
-  badge: {
-    position: "absolute",
-    top: 5,
-    left: 55,
-    borderRadius: 12,
-    minWidth: 24,
-    height: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10,
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "bold",
-    // Убрали 'white', он теперь theme.colors.onError
-  },
-  textContainer: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 2,
-  },
-  name: {
-    flexShrink: 1,
-    marginRight: 10,
-  },
-  time: {
-    // Убрали жесткий цвет, он теперь в style прописан
-  },
-  lastMessage: {
-    fontSize: 14,
-    // Убрали жесткий цвет
-  },
-});
-*/
-
-// chat-card.tsx
+// components/chat-card.tsx
 import React, { useState } from "react";
 import { View, StyleSheet, Image, TouchableOpacity } from "react-native";
 import {
@@ -129,14 +13,27 @@ import {
 } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { ChatRoom, ChatType } from "@/constants/types";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ChatCardProps {
   chat: ChatRoom | "ADD_BUTTON";
   isWide: boolean;
-  // Колбэк для вызова модалки создания (передает выбранный тип)
   onCreatePress?: (type: ChatType) => void;
 }
 
+/**
+ * Карточка чата для отображения в списке или сетке
+ *
+ * @component
+ * @param {ChatRoom | 'ADD_BUTTON'} chat - Объект чата или специальное значение для кнопки создания
+ * @param {boolean} isWide - Режим отображения (широкий для сетки, узкий для списка)
+ * @param {function} onCreatePress - Callback для создания нового чата
+ *
+ * @description
+ * Отображает информацию о чате: аватар, название, последнее сообщение, статус онлайн.
+ * В режиме ADD_BUTTON показывает интерактивную кнопку для создания нового чата.
+ * Адаптируется под разные размеры экрана (широкий/узкий режим).
+ */
 export const ChatCard: React.FC<ChatCardProps> = ({
   chat,
   isWide,
@@ -144,268 +41,333 @@ export const ChatCard: React.FC<ChatCardProps> = ({
 }) => {
   const theme = useTheme();
   const router = useRouter();
+  const { user } = useAuth();
 
-  // Состояние для карточки создания (расширена или нет)
+  // Состояние для кнопки создания чата
   const [isAddExpanded, setIsAddExpanded] = useState(false);
-  const [newChatType, setNewChatType] = useState<string>("PRIVATE");
+  const [newChatType, setNewChatType] = useState<ChatType>("PRIVATE");
 
-  // --- ЛОГИКА КАРТОЧКИ СОЗДАНИЯ (ADD_BUTTON) ---
+  // --- КНОПКА СОЗДАНИЯ НОВОГО ЧАТА ---
   if (chat === "ADD_BUTTON") {
-    // Сброс состояния при сворачивании
-    const handleCancel = () => {
-      setIsAddExpanded(false);
-      setNewChatType("PRIVATE");
-    };
-
-    const handleSubmit = () => {
-      if (onCreatePress) {
-        onCreatePress(newChatType as ChatType);
-      }
-      setIsAddExpanded(false);
-    };
-
-    // 1.1 Широкий режим + Расширенная форма
-    if (isWide && isAddExpanded) {
-      return (
-        <Card style={[styles.wideCard, { justifyContent: "center" }]}>
-          <Card.Content style={{ gap: 10 }}>
-            <SegmentedButtons
-              value={newChatType}
-              onValueChange={setNewChatType}
-              density="small"
-              buttons={[
-                { value: "PRIVATE", label: "ЛС" },
-                { value: "GROUP", label: "Группа" },
-                { value: "PUBLIC", label: "Сервер" },
-              ]}
-              style={{ marginBottom: 8 }}
-            />
-            <Button
-              mode="contained"
-              icon={newChatType === "PRIVATE" ? "send" : "plus"}
-              onPress={handleSubmit}
-            >
-              {newChatType === "PRIVATE" ? "Написать" : "Создать"}
-            </Button>
-            <Button mode="outlined" onPress={handleCancel}>
-              Отменить
-            </Button>
-          </Card.Content>
-        </Card>
-      );
-    }
-
-    // 1.2 Узкий режим + Расширенная форма
-    if (!isWide && isAddExpanded) {
-      return (
-        <Surface
-          style={[styles.narrowCard, { paddingVertical: 8 }]}
-          elevation={2}
-        >
-          <View
-            style={{
-              flex: 1,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <SegmentedButtons
-                value={newChatType}
-                onValueChange={setNewChatType}
-                density="small"
-                buttons={[
-                  { value: "PRIVATE", label: "ЛС" },
-                  { value: "GROUP", label: "Гр" },
-                  { value: "PUBLIC", label: "Срв" },
-                ]}
-              />
-            </View>
-            <IconButton
-              icon={newChatType === "PRIVATE" ? "send" : "plus"}
-              mode="contained"
-              containerColor={theme.colors.primary}
-              iconColor={theme.colors.onPrimary}
-              size={20}
-              onPress={handleSubmit}
-            />
-            <IconButton icon="arrow-left" size={20} onPress={handleCancel} />
-          </View>
-        </Surface>
-      );
-    }
-
-    // 1.3 Свернутое состояние (Одинаковое логически, разное визуально)
-    const handleExpand = () => setIsAddExpanded(true);
-
-    if (isWide) {
-      return (
-        <Card style={[styles.wideCard, styles.addCard]} onPress={handleExpand}>
-          <View style={styles.centerContent}>
-            <Text
-              variant="displayMedium"
-              style={{ color: theme.colors.primary }}
-            >
-              +
-            </Text>
-            <Text variant="bodyLarge">Новый чат</Text>
-          </View>
-        </Card>
-      );
-    }
-
-    return (
-      <TouchableOpacity onPress={handleExpand}>
-        <Surface style={styles.narrowCard} elevation={1}>
-          <View
-            style={[
-              styles.avatarContainer,
-              styles.addAvatar,
-              { backgroundColor: theme.colors.surfaceVariant },
-            ]}
-          >
-            <Text
-              variant="headlineMedium"
-              style={{ color: theme.colors.primary }}
-            >
-              +
-            </Text>
-          </View>
-          <View style={styles.narrowContent}>
-            <Text variant="titleMedium">Создать новый чат</Text>
-          </View>
-        </Surface>
-      </TouchableOpacity>
+    return isAddExpanded ? (
+      <CreateChatForm
+        isWide={isWide}
+        chatType={newChatType}
+        onChatTypeChange={setNewChatType}
+        onSubmit={() => onCreatePress?.(newChatType)}
+        onCancel={() => {
+          setIsAddExpanded(false);
+          setNewChatType("PRIVATE");
+        }}
+      />
+    ) : (
+      <AddChatButton
+        isWide={isWide}
+        theme={theme}
+        onPress={() => setIsAddExpanded(true)}
+      />
     );
   }
 
-  // --- ЛОГИКА ОБЫЧНОГО ЧАТА ---
+  // --- КАРТОЧКА СУЩЕСТВУЮЩЕГО ЧАТА ---
+  return <ExistingChatCard chat={chat} isWide={isWide} theme={theme} user={user} />;
+};
 
-  const isOnline = chat.isOnline ?? false;
-  const hasUnread = (chat.unreadCount || 0) > 0;
+// --- КОМПОНЕНТЫ-СУБКОМПОНЕНТЫ ---
 
-  // Стилизация оффлайна и непрочитанных
-  const cardOpacity = isOnline ? 1 : 0.6;
-  // Если есть непрочитанные, фон чуть подкрашен (primaryContainer с прозрачностью или просто primaryContainer)
-  // Для Paper лучше использовать theme colors.
-  const backgroundColor = hasUnread
-    ? theme.colors.primaryContainer // Можно сделать светлее, если слишком ярко: theme.colors.elevation.level2
-    : theme.colors.surface;
+/**
+ * Кнопка для добавления нового чата (свернутое состояние)
+ */
+interface AddChatButtonProps {
+  isWide: boolean;
+  theme: any;
+  onPress: () => void;
+}
 
-  const textColor = hasUnread
-    ? theme.colors.onPrimaryContainer
-    : theme.colors.onSurface;
-
-  const handlePress = () => {
-    router.push(`./chat/${chat.id}`);
-  };
-
-  const AvatarComponent = () => (
-    <View>
-      <Image
-        source={{ uri: chat.avatarUrl || "https://via.placeholder.com/150" }}
-        style={[styles.avatar, { opacity: isOnline ? 1 : 0.5 }]} // Desaturate effect (fake) via opacity
-      />
-      {/* Если оффлайн, добавляем серый оверлей для эффекта "тусклости/desaturation" */}
-      {!isOnline && (
-        <View
-          style={[
-            styles.avatar,
-            { position: "absolute", backgroundColor: "gray", opacity: 0.3 },
-          ]}
-        />
-      )}
-
-      {/* Индикатор */}
-      <View
-        style={[
-          styles.statusIndicator,
-          { backgroundColor: isOnline ? "#2196F3" : "gray" },
-        ]}
-      >
-        {!isOnline &&
-          !isWide &&
-          // Для узкого режима в оффлайне можно вывести текст внутри кругляшка, если очень надо,
-          // но места там мало (14px). Оставим просто серым кругляшком по ТЗ ("серый кругляшок с надписью" - текст не влезет в кругляшок 14px, текст будет рядом)
-          null}
-      </View>
-    </View>
-  );
-
-  const formatTime = (date?: string) => {
-    if (!date) return "";
-    return new Date(date).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // 2.1 Широкий режим
+const AddChatButton: React.FC<AddChatButtonProps> = ({ isWide, theme, onPress }) => {
   if (isWide) {
     return (
-      <Card
-        style={[styles.wideCard, { opacity: cardOpacity, backgroundColor }]}
-        onPress={handlePress}
-        mode={hasUnread ? "contained" : "elevated"}
-      >
-        <View style={styles.wideCardInner}>
-          <View style={{ alignSelf: "center", marginBottom: 12 }}>
-            <AvatarComponent />
-          </View>
-
-          <Text
-            variant="titleMedium"
-            style={{ textAlign: "center", color: textColor }}
-            numberOfLines={1}
-          >
-            {chat.name}
+      <Card style={[styles.wideCard, styles.addCard]} onPress={onPress}>
+        <View style={styles.centerContent}>
+          <Text variant="displayMedium" style={{ color: theme.colors.primary }}>
+            +
           </Text>
-
-          <Text
-            variant="bodySmall"
-            style={{
-              textAlign: "center",
-              color: isOnline ? "#2196F3" : theme.colors.onSurfaceDisabled,
-              marginBottom: 8,
-            }}
-          >
-            {isOnline ? "Онлайн" : chat.lastSeen || "Не в сети"}
-          </Text>
-
-          <View style={styles.wideMessageRow}>
-            <Text
-              variant="bodyMedium"
-              numberOfLines={2}
-              style={{ flex: 1, color: textColor, opacity: 0.8 }}
-            >
-              {chat.lastMessageText || "Нет сообщений"}
-            </Text>
-            <View style={{ alignItems: "flex-end", marginLeft: 8 }}>
-              <Text variant="labelSmall" style={{ color: textColor }}>
-                {formatTime(chat.lastMessageAt)}
-              </Text>
-              {hasUnread && (
-                <Badge size={22} style={{ marginTop: 4 }}>
-                  {chat.unreadCount}
-                </Badge>
-              )}
-            </View>
-          </View>
+          <Text variant="bodyLarge">Новый чат</Text>
         </View>
       </Card>
     );
   }
 
-  // 2.2 Узкий режим
   return (
-    <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
+    <TouchableOpacity onPress={onPress}>
+      <Surface style={styles.narrowCard} elevation={1}>
+        <View
+          style={[
+            styles.avatarContainer,
+            styles.addAvatar,
+            { backgroundColor: theme.colors.surfaceVariant },
+          ]}
+        >
+          <Text variant="headlineMedium" style={{ color: theme.colors.primary }}>
+            +
+          </Text>
+        </View>
+        <View style={styles.narrowContent}>
+          <Text variant="titleMedium">Создать новый чат</Text>
+        </View>
+      </Surface>
+    </TouchableOpacity>
+  );
+};
+
+/**
+ * Форма для создания нового чата (развернутое состояние)
+ */
+interface CreateChatFormProps {
+  isWide: boolean;
+  chatType: ChatType;
+  onChatTypeChange: (type: ChatType) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+}
+
+const CreateChatForm: React.FC<CreateChatFormProps> = ({
+  isWide,
+  chatType,
+  onChatTypeChange,
+  onSubmit,
+  onCancel,
+}) => {
+  const theme = useTheme();
+  const buttonLabels = {
+    PRIVATE: "Написать",
+    GROUP: "Создать",
+    PUBLIC: "Создать",
+  };
+
+  if (isWide) {
+    return (
+      <Card style={[styles.wideCard, { justifyContent: "center" }]}>
+        <Card.Content style={{ gap: 10 }}>
+          <SegmentedButtons
+            value={chatType}
+            onValueChange={onChatTypeChange}
+            density="small"
+            buttons={[
+              { value: "PRIVATE", label: "ЛС" },
+              { value: "GROUP", label: "Группа" },
+              { value: "PUBLIC", label: "Сервер" },
+            ]}
+            style={{ marginBottom: 8 }}
+          />
+          <Button
+            mode="contained"
+            icon={chatType === "PRIVATE" ? "send" : "plus"}
+            onPress={onSubmit}
+          >
+            {buttonLabels[chatType]}
+          </Button>
+          <Button mode="outlined" onPress={onCancel}>
+            Отменить
+          </Button>
+        </Card.Content>
+      </Card>
+    );
+  }
+
+  return (
+    <Surface style={[styles.narrowCard, { paddingVertical: 8 }]} elevation={2}>
+      <View style={styles.compactFormRow}>
+        <View style={{ flex: 1 }}>
+          <SegmentedButtons
+            value={chatType}
+            onValueChange={onChatTypeChange}
+            density="small"
+            buttons={[
+              { value: "PRIVATE", label: "ЛС" },
+              { value: "GROUP", label: "Гр" },
+              { value: "PUBLIC", label: "Срв" },
+            ]}
+          />
+        </View>
+        <IconButton
+          icon={chatType === "PRIVATE" ? "send" : "plus"}
+          mode="contained"
+          containerColor={theme.colors.primary}
+          iconColor={theme.colors.onPrimary}
+          size={20}
+          onPress={onSubmit}
+        />
+        <IconButton icon="arrow-left" size={20} onPress={onCancel} />
+      </View>
+    </Surface>
+  );
+};
+
+/**
+ * Карточка существующего чата
+ */
+interface ExistingChatCardProps {
+  chat: ChatRoom;
+  isWide: boolean;
+  theme: any;
+  user: { id: number } | null;
+}
+
+const ExistingChatCard: React.FC<ExistingChatCardProps> = ({ chat, isWide, theme, user }) => {
+  const router = useRouter();
+
+  const participants = chat.participants || [];
+  const isOnline = chat.isOnline ?? false;
+  const hasUnread = (chat.unreadCount || 0) > 0;
+
+  const displayName = getChatDisplayName(chat, participants, user?.id);
+  const lastMessageTime = formatTime(chat.lastMessageAt);
+  const backgroundColor = hasUnread ? theme.colors.primaryContainer : theme.colors.surface;
+  const textColor = hasUnread ? theme.colors.onPrimaryContainer : theme.colors.onSurface;
+
+  const handlePress = () => {
+    router.push(`./chat/${chat.id}`);
+  };
+
+  return isWide ? (
+    <WideChatCard
+      chat={chat}
+      displayName={displayName}
+      isOnline={isOnline}
+      hasUnread={hasUnread}
+      backgroundColor={backgroundColor}
+      textColor={textColor}
+      lastMessageTime={lastMessageTime}
+      onPress={handlePress}
+    />
+  ) : (
+    <NarrowChatCard
+      chat={chat}
+      displayName={displayName}
+      isOnline={isOnline}
+      hasUnread={hasUnread}
+      backgroundColor={backgroundColor}
+      textColor={textColor}
+      lastMessageTime={lastMessageTime}
+      onPress={handlePress}
+      theme={theme}
+    />
+  );
+};
+
+/**
+ * Широкий вариант карточки чата (для сетки)
+ */
+interface WideChatCardProps {
+  chat: ChatRoom;
+  displayName: string;
+  isOnline: boolean;
+  hasUnread: boolean;
+  backgroundColor: string;
+  textColor: string;
+  lastMessageTime: string;
+  onPress: () => void;
+}
+
+const WideChatCard: React.FC<WideChatCardProps> = ({
+  chat,
+  displayName,
+  isOnline,
+  hasUnread,
+  backgroundColor,
+  textColor,
+  lastMessageTime,
+  onPress,
+}) => {
+  return (
+    <Card
+      style={[styles.wideCard, { backgroundColor }]}
+      onPress={onPress}
+      mode={hasUnread ? "contained" : "elevated"}
+    >
+      <View style={styles.wideCardInner}>
+        <View style={{ alignSelf: "center", marginBottom: 12 }}>
+          <ChatAvatar avatarUrl={chat.avatarUrl} isOnline={isOnline} />
+        </View>
+
+        <Text
+          variant="titleMedium"
+          style={{ textAlign: "center", color: textColor }}
+          numberOfLines={1}
+        >
+          {displayName}
+        </Text>
+
+        <Text
+          variant="bodySmall"
+          style={{
+            textAlign: "center",
+            color: isOnline ? "#2196F3" : "#666",
+            marginBottom: 8,
+          }}
+        >
+          {isOnline ? "Онлайн" : "Не в сети"}
+        </Text>
+
+        <View style={styles.wideMessageRow}>
+          <Text
+            variant="bodyMedium"
+            numberOfLines={2}
+            style={{ flex: 1, color: textColor, opacity: 0.8 }}
+          >
+            {chat.lastMessageText || "Нет сообщений"}
+          </Text>
+          <View style={{ alignItems: "flex-end", marginLeft: 8 }}>
+            <Text variant="labelSmall" style={{ color: textColor }}>
+              {lastMessageTime}
+            </Text>
+            {hasUnread && (
+              <Badge size={22} style={{ marginTop: 4 }}>
+                {chat.unreadCount}
+              </Badge>
+            )}
+          </View>
+        </View>
+      </View>
+    </Card>
+  );
+};
+
+/**
+ * Узкий вариант карточки чата (для списка)
+ */
+interface NarrowChatCardProps {
+  chat: ChatRoom;
+  displayName: string;
+  isOnline: boolean;
+  hasUnread: boolean;
+  backgroundColor: string;
+  textColor: string;
+  lastMessageTime: string;
+  onPress: () => void;
+  theme: any;
+}
+
+const NarrowChatCard: React.FC<NarrowChatCardProps> = ({
+  chat,
+  displayName,
+  isOnline,
+  hasUnread,
+  backgroundColor,
+  textColor,
+  lastMessageTime,
+  onPress,
+  theme,
+}) => {
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
       <Surface
-        style={[styles.narrowCard, { opacity: cardOpacity, backgroundColor }]}
+        style={[styles.narrowCard, { backgroundColor }]}
         elevation={0}
       >
         <View style={styles.avatarContainer}>
-          <AvatarComponent />
+          <ChatAvatar avatarUrl={chat.avatarUrl} isOnline={isOnline} />
         </View>
 
         <View style={styles.narrowContent}>
@@ -414,7 +376,7 @@ export const ChatCard: React.FC<ChatCardProps> = ({
             numberOfLines={1}
             style={{ color: textColor }}
           >
-            {chat.name}
+            {displayName}
           </Text>
           <Text
             variant="bodyMedium"
@@ -427,37 +389,104 @@ export const ChatCard: React.FC<ChatCardProps> = ({
 
         <View style={styles.narrowRightMeta}>
           <Text variant="labelSmall" style={{ color: textColor }}>
-            {formatTime(chat.lastMessageAt)}
+            {lastMessageTime}
           </Text>
           <View style={{ marginTop: 4, alignItems: "flex-end" }}>
             {hasUnread ? (
               <Badge size={22}>{chat.unreadCount}</Badge>
             ) : (
-              // Серый текст "5 ч." под временем, если оффлайн и нет непрочитанных
               !isOnline && (
-                <Text variant="labelSmall" style={{ color: "gray" }}>
-                  {chat.lastSeen}
+                <Text variant="labelSmall" style={{ color: "#666" }}>
+                  Не в сети
                 </Text>
               )
             )}
           </View>
         </View>
       </Surface>
-      <View
-        style={{ height: 1, backgroundColor: theme.colors.outlineVariant }}
-      />
+      <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.outlineVariant }} />
     </TouchableOpacity>
   );
 };
 
+/**
+ * Аватар чата с индикатором онлайн-статуса
+ */
+interface ChatAvatarProps {
+  avatarUrl?: string;
+  isOnline: boolean;
+}
+
+const ChatAvatar: React.FC<ChatAvatarProps> = ({ avatarUrl, isOnline }) => {
+  return (
+    <View>
+      <Image
+        source={{
+          uri: avatarUrl || "https://via.placeholder.com/150?text=Чат"
+        }}
+        style={[styles.avatar, { opacity: isOnline ? 1 : 0.6 }]}
+        defaultSource={{ uri: "https://via.placeholder.com/150?text=Чат" }}
+      />
+      <View
+        style={[
+          styles.statusIndicator,
+          { backgroundColor: isOnline ? "#2196F3" : "#666" },
+        ]}
+      />
+    </View>
+  );
+};
+
+// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
+
+/**
+ * Определяет отображаемое название чата
+ */
+const getChatDisplayName = (
+  chat: ChatRoom,
+  participants: ChatRoom['participants'],
+  currentUserId?: number
+): string => {
+  if (chat.name) return chat.name;
+
+  if (chat.type === "PRIVATE" && participants.length > 0 && currentUserId) {
+    const otherParticipant = participants.find(p => p.userId !== currentUserId);
+    return otherParticipant?.userName || "Приватный чат";
+  }
+
+  if (chat.type === "GROUP" || chat.type === "PUBLIC") {
+    return `Чат ${chat.id}`;
+  }
+
+  return `Чат ${chat.id}`;
+};
+
+/**
+ * Форматирует время для отображения
+ */
+const formatTime = (dateString?: string): string => {
+  if (!dateString) return "";
+
+  try {
+    return new Date(dateString).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+};
+
+// --- СТИЛИ ---
+
 const styles = StyleSheet.create({
+  // Общие стили
   avatar: {
     width: 56,
     height: 56,
     borderRadius: 12,
-    backgroundColor: "#e0e0e0",
+    backgroundColor: "#f0f0f0",
   },
-  addAvatar: { justifyContent: "center", alignItems: "center" },
   statusIndicator: {
     position: "absolute",
     bottom: -2,
@@ -468,28 +497,75 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "white",
   },
-  narrowCard: { flexDirection: "row", padding: 12, alignItems: "center" },
-  avatarContainer: { marginRight: 12 },
-  narrowContent: { flex: 1, justifyContent: "center" },
-  narrowRightMeta: { alignItems: "flex-end", marginLeft: 8, minWidth: 50 },
-  wideCard: { flex: 1, margin: 8, minHeight: 220 },
+
+  // Стили для узкого режима (список)
+  narrowCard: {
+    flexDirection: "row",
+    padding: 12,
+    alignItems: "center",
+    minHeight: 72,
+  },
+  avatarContainer: {
+    marginRight: 12,
+  },
+  narrowContent: {
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 48,
+  },
+  narrowRightMeta: {
+    alignItems: "flex-end",
+    marginLeft: 8,
+    minWidth: 60,
+  },
+
+  // Стили для широкого режима (сетка)
+  wideCard: {
+    flex: 1,
+    margin: 8,
+    minHeight: 220,
+    borderRadius: 16,
+  },
+  wideCardInner: {
+    padding: 16,
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  wideMessageRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
+    minHeight: 40,
+  },
+
+  // Стили для кнопки добавления
   addCard: {
     justifyContent: "center",
     alignItems: "center",
     borderStyle: "dashed",
     borderWidth: 2,
-    borderColor: "#ccc",
+    borderColor: "#ddd",
     backgroundColor: "transparent",
+  },
+  addAvatar: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 56,
+    height: 56,
+    borderRadius: 12,
   },
   centerContent: {
     alignItems: "center",
     justifyContent: "center",
     height: "100%",
+    padding: 16,
   },
-  wideCardInner: { padding: 16 },
-  wideMessageRow: {
+
+  // Стили для компактной формы
+  compactFormRow: {
+    flex: 1,
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 12,
+    alignItems: "center",
+    gap: 8,
   },
 });

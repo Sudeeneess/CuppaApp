@@ -1,278 +1,474 @@
-import React, { useState, useEffect } from "react";
-import { View, ScrollView, StyleSheet } from "react-native";
+// components/create-chat-modal.tsx
+import React, { useState, useEffect, useCallback } from "react";
+import { View, ScrollView, StyleSheet, FlatList } from "react-native";
 import {
   Modal,
   Portal,
   Text,
   TextInput,
   Button,
-  Checkbox,
   List,
   Avatar,
   Searchbar,
-  Divider,
+  ActivityIndicator,
+  useTheme,
 } from "react-native-paper";
-import { ChatType, CreateChatRequest } from "@/constants/types";
-
-// MOCK DATA (В будущем заменить на API запрос друзей)
-const MOCK_USERS = [
-  { id: 1, name: "Alice Smith", avatar: "https://i.pravatar.cc/150?u=1" },
-  { id: 2, name: "Bob Johnson", avatar: "https://i.pravatar.cc/150?u=2" },
-  { id: 3, name: "Charlie Brown", avatar: "https://i.pravatar.cc/150?u=3" },
-  { id: 4, name: "Diana Prince", avatar: "https://i.pravatar.cc/150?u=4" },
-  { id: 5, name: "Evan Wright", avatar: "https://i.pravatar.cc/150?u=5" },
-];
+import { ChatType, CreateChatRequest, UserSearchResult } from "@/constants/types";
+import { UserService } from "@/services/user-service";
+import { useAuth } from "@/hooks/use-auth";
 
 interface CreateChatModalProps {
   visible: boolean;
-  type: ChatType; // Тип создаваемого чата
+  type: ChatType;
   onDismiss: () => void;
   onSubmit: (data: CreateChatRequest) => Promise<void>;
 }
 
+/**
+ * Модальное окно для создания нового чата
+ *
+ * @component
+ * @param {boolean} visible - Видимость модального окна
+ * @param {ChatType} type - Тип создаваемого чата (PRIVATE/GROUP/PUBLIC)
+ * @param {function} onDismiss - Callback для закрытия модального окна
+ * @param {function} onSubmit - Callback для создания чата
+ *
+ * @description
+ * Предоставляет интерфейс для создания чатов разных типов:
+ * - PRIVATE: Поиск и выбор пользователя для личной переписки
+ * - GROUP/PUBLIC: Создание группового чата с настройками названия и описания
+ * Поддерживает поиск пользователей с дебаунсом для приватных чатов
+ */
 export const CreateChatModal: React.FC<CreateChatModalProps> = ({
   visible,
   type,
   onDismiss,
   onSubmit,
 }) => {
-  // Внутренние стейты формы (изолированы от остального приложения)
+  const theme = useTheme();
+  const { user } = useAuth();
+
+  // Состояние для приватных чатов
+  const [searchQuery, setSearchQuery] = useState("");
+  const [users, setUsers] = useState<UserSearchResult[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  // Состояние для групповых чатов
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Сброс формы при открытии
+  // Сброс состояния при закрытии
   useEffect(() => {
-    if (visible) {
-      setStep(1);
-      setName("");
-      setDescription("");
-      setSearchQuery("");
-      setSelectedUsers([]);
-      setIsSubmitting(false);
+    if (!visible) {
+      resetState();
     }
   }, [visible]);
 
-  const handleFinish = async (nameOverride?: string) => {
-    const finalName = nameOverride || name;
+  const resetState = () => {
+    setSearchQuery("");
+    setUsers([]);
+    setSearchError(null);
+    setStep(1);
+    setName("");
+    setDescription("");
+    setIsSubmitting(false);
+  };
 
-    if (!finalName && type !== "PRIVATE") {
-      alert("Пожалуйста, введите название");
-      return;
+  /**
+   * Загружает список пользователей с фильтрацией
+   */
+  const loadUsers = useCallback(async (search = "") => {
+    if (!user?.id) return;
+
+    setLoadingUsers(true);
+    setSearchError(null);
+
+    try {
+      let userList = await UserService.getAllUsers();
+
+      // Фильтруем текущего пользователя
+      userList = userList.filter(userItem => userItem.id !== user.id);
+
+      // Применяем поисковый фильтр
+      if (search.trim()) {
+        const query = search.toLowerCase();
+        userList = userList.filter(userItem =>
+          userItem.username.toLowerCase().includes(query) ||
+          userItem.email.toLowerCase().includes(query) ||
+          (userItem.firstName && userItem.firstName.toLowerCase().includes(query)) ||
+          (userItem.lastName && userItem.lastName.toLowerCase().includes(query))
+        );
+      }
+
+      setUsers(userList);
+
+      if (userList.length === 0 && search) {
+        setSearchError(`Пользователь "${search}" не найден`);
+      }
+    } catch (err: any) {
+      console.error("Ошибка загрузки пользователей:", err);
+      setSearchError("Не удалось загрузить список пользователей");
+      setUsers([]);
+    } finally {
+      setLoadingUsers(false);
     }
+  }, [user?.id]);
+
+  /**
+   * Обработчик поиска с дебаунсом
+   */
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+
+    if (query.trim()) {
+      const timer = setTimeout(() => loadUsers(query), 500);
+      return () => clearTimeout(timer);
+    } else {
+      loadUsers();
+    }
+  }, [loadUsers]);
+
+  /**
+   * Создает приватный чат с выбранным пользователем
+   */
+  const createPrivateChat = async (targetUserId: number) => {
+    if (!user?.id) return;
 
     setIsSubmitting(true);
     try {
-      const data: CreateChatRequest = {
-        name: finalName,
-        type,
-        description,
-        // Логика макс. участников чисто для примера
-        maxParticipants: type === "GROUP" ? 50 : 1000,
-        // Здесь можно добавить avatarUrl, если будет загрузка
-      };
-      console.log(data);
-      await onSubmit(data);
+      await onSubmit({
+        type: "PRIVATE",
+        targetUserId,
+      });
       onDismiss();
-    } catch (e) {
-      // Ошибку обработает родитель или сервис, здесь просто снимаем лоадер
-      console.error(e);
+    } catch (error: any) {
+      console.error("Ошибка создания приватного чата:", error);
+      alert(error.message || "Не удалось создать чат");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // --- РЕНДЕР КОНТЕНТА ---
+  /**
+   * Создает групповой или публичный чат
+   */
+  const createGroupChat = async () => {
+    setIsSubmitting(true);
+    try {
+      await onSubmit({
+        name: name.trim(),
+        type,
+        description: description.trim(),
+        maxParticipants: type === "GROUP" ? 50 : 1000,
+      });
+      onDismiss();
+    } catch (error: any) {
+      console.error("Ошибка создания группового чата:", error);
+      alert(error.message || "Не удалось создать чат");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  const renderContent = () => {
-    // Сценарий 1: Личные сообщения
-    if (type === "PRIVATE") {
-      const filteredUsers = MOCK_USERS.filter((u) =>
-        u.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+  /**
+   * Рендер элемента списка пользователей
+   */
+  const renderUserItem = ({ item: user }: { item: UserSearchResult }) => (
+    <List.Item
+      title={user.username}
+      description={getUserDescription(user)}
+      left={() => (
+        <Avatar.Image
+          size={48}
+          source={{
+            uri: user.avatarUrl || `https://i.pravatar.cc/150?u=${user.id}`
+          }}
+          style={styles.avatar}
+        />
+      )}
+      right={() => (
+        <Button
+          mode="contained"
+          loading={isSubmitting}
+          onPress={() => createPrivateChat(user.id)}
+          style={styles.actionButton}
+        >
+          Написать
+        </Button>
+      )}
+      style={styles.listItem}
+    />
+  );
 
-      return (
-        <>
+  // --- РЕНДЕР ДЛЯ ПРИВАТНЫХ ЧАТОВ ---
+  if (type === "PRIVATE") {
+    return (
+      <Portal>
+        <Modal
+          visible={visible}
+          onDismiss={onDismiss}
+          contentContainerStyle={[
+            styles.modalContainer,
+            { backgroundColor: theme.colors.surface }
+          ]}
+        >
           <Text variant="headlineSmall" style={styles.title}>
             Новое сообщение
           </Text>
-          <Searchbar
-            placeholder="Поиск..."
-            onChangeText={setSearchQuery}
-            value={searchQuery}
-            style={styles.input}
-          />
-          <ScrollView style={styles.userList}>
-            {filteredUsers.map((user) => (
-              <List.Item
-                key={user.id}
-                title={user.name}
-                left={() => (
-                  <Avatar.Image size={40} source={{ uri: user.avatar }} />
-                )}
-                right={() => (
-                  <Button
-                    mode="text"
-                    loading={isSubmitting}
-                    onPress={() => {
-                      // 🔥 ВАЖНО:
-                      // 1. Для ЛС имя чата часто не нужно (оно формируется из имен участников),
-                      //    но если API требует, передадим имя юзера.
-                      // 2. ГЛАВНОЕ: Передаем targetUserId
+          <Text variant="bodyMedium" style={styles.subtitle}>
+            Найдите пользователя для личной переписки
+          </Text>
 
-                      setIsSubmitting(true);
-                      onSubmit({
-                        type: "PRIVATE",
-                        targetUserId: user.id, // ID из MOCK_USERS (1, 2, 3...)
-                        name: user.name, // На всякий случай, если UI использует для оптимистичного обновления
-                      })
-                        .then(() => {
-                          onDismiss();
-                        })
-                        .catch((e) => console.error(e))
-                        .finally(() => setIsSubmitting(false));
-                    }}
-                  >
-                    Написать
-                  </Button>
-                )}
-              />
-            ))}
-            {/* ... */}
-          </ScrollView>
-          <Button style={styles.cancelButton} onPress={onDismiss}>
+          <Searchbar
+            placeholder="Имя, никнейм или email..."
+            onChangeText={handleSearch}
+            value={searchQuery}
+            style={styles.searchInput}
+            icon="account-search"
+          />
+
+          {loadingUsers ? (
+            <View style={styles.center}>
+              <ActivityIndicator size="large" />
+              <Text style={{ marginTop: 16, color: theme.colors.onSurfaceVariant }}>
+                Поиск пользователей...
+              </Text>
+            </View>
+          ) : searchError ? (
+            <View style={styles.center}>
+              <Text style={{ color: theme.colors.error, textAlign: "center" }}>
+                {searchError}
+              </Text>
+              <Button
+                mode="outlined"
+                onPress={() => loadUsers()}
+                style={{ marginTop: 16 }}
+              >
+                Обновить
+              </Button>
+            </View>
+          ) : (
+            <FlatList
+              data={users}
+              renderItem={renderUserItem}
+              keyExtractor={(item) => item.id.toString()}
+              style={styles.userList}
+              ListEmptyComponent={
+                <View style={styles.center}>
+                  <Text style={styles.emptyText}>
+                    {searchQuery
+                      ? "Пользователи не найдены"
+                      : "Начните поиск пользователей"}
+                  </Text>
+                </View>
+              }
+              showsVerticalScrollIndicator={false}
+            />
+          )}
+
+          <Button
+            mode="outlined"
+            onPress={onDismiss}
+            style={styles.cancelButton}
+          >
             Отмена
           </Button>
-        </>
-      );
-    }
-    // Сценарий 2: Группа/Сервер - Шаг 1 (Настройки)
-    if (step === 1) {
-      return (
-        <>
+        </Modal>
+      </Portal>
+    );
+  }
+
+  // --- РЕНДЕР ДЛЯ ГРУППОВЫХ И ПУБЛИЧНЫХ ЧАТОВ ---
+  const modalTitle = type === "GROUP" ? "Создать группу" : "Создать сервер";
+
+  if (step === 1) {
+    return (
+      <Portal>
+        <Modal
+          visible={visible}
+          onDismiss={onDismiss}
+          contentContainerStyle={[
+            styles.modalContainer,
+            { backgroundColor: theme.colors.surface }
+          ]}
+        >
           <Text variant="headlineSmall" style={styles.title}>
-            {type === "GROUP" ? "Создать группу" : "Создать сервер"}
+            {modalTitle}
           </Text>
+
           <TextInput
             label="Название"
             value={name}
             onChangeText={setName}
             mode="outlined"
             style={styles.input}
+            placeholder="Введите название чата"
+            maxLength={50}
           />
+
           <TextInput
-            label="Описание (опционально)"
+            label="Описание (необязательно)"
             value={description}
             onChangeText={setDescription}
             mode="outlined"
             multiline
             numberOfLines={3}
             style={styles.largeInput}
+            placeholder="Опишите назначение чата"
+            maxLength={200}
           />
+
           <View style={styles.buttonRow}>
             <Button onPress={onDismiss}>Отмена</Button>
-            <Button mode="contained" onPress={() => setStep(2)}>
+            <Button
+              mode="contained"
+              onPress={() => setStep(2)}
+              disabled={!name.trim()}
+            >
               Далее
             </Button>
           </View>
-        </>
-      );
-    }
-
-    // Сценарий 2: Группа/Сервер - Шаг 2 (Приглашения)
-    if (step === 2) {
-      const toggleUser = (id: number) => {
-        if (selectedUsers.includes(id))
-          setSelectedUsers((prev) => prev.filter((i) => i !== id));
-        else setSelectedUsers((prev) => [...prev, id]);
-      };
-
-      return (
-        <>
-          <Text variant="headlineSmall" style={styles.title}>
-            Пригласить участников
-          </Text>
-          <Text variant="bodySmall" style={styles.subtitle}>
-            Выбрано: {selectedUsers.length}
-          </Text>
-
-          <ScrollView style={styles.userList}>
-            {MOCK_USERS.map((user) => (
-              <View key={user.id}>
-                <List.Item
-                  title={user.name}
-                  left={() => (
-                    <Avatar.Image size={40} source={{ uri: user.avatar }} />
-                  )}
-                  right={() => (
-                    <Checkbox
-                      status={
-                        selectedUsers.includes(user.id)
-                          ? "checked"
-                          : "unchecked"
-                      }
-                      onPress={() => toggleUser(user.id)}
-                    />
-                  )}
-                  onPress={() => toggleUser(user.id)}
-                />
-                <Divider />
-              </View>
-            ))}
-          </ScrollView>
-
-          <View style={styles.buttonRow}>
-            <Button onPress={() => setStep(1)}>Назад</Button>
-            <Button
-              mode="contained"
-              loading={isSubmitting}
-              onPress={() => handleFinish()}
-            >
-              Создать
-            </Button>
-          </View>
-        </>
-      );
-    }
-  };
+        </Modal>
+      </Portal>
+    );
+  }
 
   return (
     <Portal>
       <Modal
         visible={visible}
         onDismiss={onDismiss}
-        contentContainerStyle={styles.modalContainer}
+        contentContainerStyle={[
+          styles.modalContainer,
+          { backgroundColor: theme.colors.surface }
+        ]}
       >
-        {renderContent()}
+        <Text variant="headlineSmall" style={styles.title}>
+          Пригласить участников
+        </Text>
+
+        <Text variant="bodyMedium" style={styles.subtitle}>
+          Вы можете добавить участников позже через меню чата
+        </Text>
+
+        <View style={[styles.center, { marginVertical: 20 }]}>
+          <Avatar.Icon
+            size={64}
+            icon="account-group"
+            style={{ backgroundColor: theme.colors.primaryContainer }}
+          />
+          <Text style={styles.emptyText}>
+            Приглашения участников
+          </Text>
+          <Text style={styles.emptySubtext}>
+            После создания чата вы сможете пригласить участников
+            через меню настроек
+          </Text>
+        </View>
+
+        <View style={styles.buttonRow}>
+          <Button onPress={() => setStep(1)}>Назад</Button>
+          <Button
+            mode="contained"
+            loading={isSubmitting}
+            onPress={createGroupChat}
+            disabled={!name.trim()}
+          >
+            Создать
+          </Button>
+        </View>
       </Modal>
     </Portal>
   );
 };
 
+// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
+
+/**
+ * Формирует описание пользователя для отображения
+ */
+const getUserDescription = (user: UserSearchResult): string => {
+  const parts = [];
+  if (user.firstName || user.lastName) {
+    parts.push(`${user.firstName || ''} ${user.lastName || ''}`.trim());
+  }
+  if (user.email) {
+    parts.push(user.email);
+  }
+  return parts.join(' • ') || "Пользователь";
+};
+
+// --- СТИЛИ ---
+
 const styles = StyleSheet.create({
   modalContainer: {
-    backgroundColor: "white",
-    padding: 20,
+    padding: 24,
     margin: 20,
-    borderRadius: 8,
+    borderRadius: 16,
     alignSelf: "center",
     width: "90%",
     maxWidth: 500,
+    maxHeight: "80%",
   },
-  title: { marginBottom: 16 },
-  subtitle: { marginBottom: 16, color: "gray" },
-  input: { marginBottom: 12 },
-  largeInput: { marginBottom: 20 },
-  userList: { maxHeight: 300 },
-  emptyText: { textAlign: "center", marginTop: 20, color: "gray" },
+  title: {
+    marginBottom: 12,
+    fontWeight: "600",
+  },
+  subtitle: {
+    marginBottom: 20,
+    opacity: 0.7,
+  },
+  searchInput: {
+    marginBottom: 16,
+  },
+  input: {
+    marginBottom: 16,
+  },
+  largeInput: {
+    marginBottom: 24,
+  },
+  userList: {
+    maxHeight: 300,
+    marginBottom: 16,
+  },
+  listItem: {
+    paddingVertical: 8,
+  },
+  avatar: {
+    marginRight: 12,
+  },
+  actionButton: {
+    alignSelf: "center",
+  },
+  emptyText: {
+    textAlign: "center",
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: "500",
+    opacity: 0.8,
+  },
+  emptySubtext: {
+    textAlign: "center",
+    marginTop: 8,
+    fontSize: 14,
+    opacity: 0.6,
+    paddingHorizontal: 20,
+  },
   buttonRow: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 10,
-    marginTop: 20,
+    justifyContent: "space-between",
+    marginTop: 8,
   },
-  cancelButton: { marginTop: 16 },
+  cancelButton: {
+    marginTop: 16,
+    alignSelf: "center",
+  },
+  center: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
 });
