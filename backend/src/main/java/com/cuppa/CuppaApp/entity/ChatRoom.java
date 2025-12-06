@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Сущность чат-комнаты (ChatRoom) для приложения Cuppa
@@ -162,15 +163,18 @@ public class ChatRoom {
     private Integer maxParticipants = 2;
 
 
-/**
- * Перечисление типов чат-комнат
- *
- * <p>Определяет возможные типы чатов в системе.
- * PRIVATE - приватные чаты между двумя пользователями
- * GROUP - групповые чаты с несколькими участниками
- * PUBLIC - публичные чаты, доступные для всех пользователей
- */
-public static enum ChatRoomType {
-    PRIVATE, GROUP, PUBLIC
-}
+    /**
+     * Перечисление типов чат-комнат
+     *
+     * <p>Определяет возможные типы чатов в системе.
+     * PRIVATE - приватные чаты между двумя пользователями
+     * GROUP - групповые чаты с несколькими участниками
+     * PUBLIC - публичные чаты, доступные для всех пользователей
+     */
+    public static enum ChatRoomType {
+        PRIVATE, GROUP, PUBLIC
+    }
+
+    @OneToMany(mappedBy = "chatRoom", fetch = FetchType.LAZY)
+    private List<ChatParticipant> participants;
 }
