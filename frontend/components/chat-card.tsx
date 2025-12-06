@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   },
 });
 */
-
+/*
 // chat-card.tsx
 import React, { useState } from "react";
 import { View, StyleSheet, Image, TouchableOpacity } from "react-native";
@@ -307,7 +307,7 @@ export const ChatCard: React.FC<ChatCardProps> = ({
         source={{ uri: chat.avatarUrl || "https://via.placeholder.com/150" }}
         style={[styles.avatar, { opacity: isOnline ? 1 : 0.5 }]} // Desaturate effect (fake) via opacity
       />
-      {/* Если оффлайн, добавляем серый оверлей для эффекта "тусклости/desaturation" */}
+
       {!isOnline && (
         <View
           style={[
@@ -317,7 +317,7 @@ export const ChatCard: React.FC<ChatCardProps> = ({
         />
       )}
 
-      {/* Индикатор */}
+
       <View
         style={[
           styles.statusIndicator,
@@ -493,3 +493,80 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 });
+*/
+
+import { TouchableRipple, Card, Text } from "react-native-paper";
+import { ChatRoom } from "@/constants/types";
+import { StyleSheet, View, Image } from "react-native";
+import { useRouter } from "expo-router";
+
+interface ChatCardProps {
+  chat: ChatRoom | "ADD_BUTTON";
+  isWide: boolean;
+}
+
+export function ChatCard(props: ChatCardProps) {
+  const { chat, isWide } = props;
+
+  const router = useRouter();
+
+  if (chat === "ADD_BUTTON") {
+  } else {
+    return (
+      <Card style={{ flex: 1, overflow: "hidden", marginTop: 8 }}>
+        <TouchableRipple
+          onPress={() => {
+            router.push(`./chat/${chat.id}`);
+          }}
+          android_ripple={{}}
+        >
+          <View>
+            {isWide && <Card.Cover source={{ uri: chat.avatarUrl }} />}
+            <Card.Title
+              title={chat.name}
+              titleStyle={{ userSelect: "none" }}
+              subtitle={chat.lastMessageText}
+              subtitleStyle={{ userSelect: "none" }}
+              right={() => <Text selectable={false}> f </Text>}
+              {...(!isWide && {
+                left: () => (
+                  <Image
+                    source={{ uri: chat.avatarUrl }}
+                    style={styles.avatar}
+                  />
+                ),
+                leftStyle: styles.left,
+                style: { paddingLeft: 0 },
+              })}
+            />
+          </View>
+        </TouchableRipple>
+      </Card>
+    );
+  }
+}
+
+const styles = StyleSheet.create({
+  avatar: { flex: 1, borderRadius: 12 },
+  left: {
+    height: "100%",
+    width: "auto",
+    aspectRatio: 1 / 1,
+    borderRadius: 12,
+  },
+});
+
+/*
+interface ChatCardProps {
+  chat: ChatRoom | "ADD_BUTTON";
+  isWide: boolean;
+  // Колбэк для вызова модалки создания (передает выбранный тип)
+  onCreatePress?: (type: ChatType) => void;
+}
+
+export const ChatCard: React.FC<ChatCardProps> = ({
+  chat,
+  isWide,
+  onCreatePress,
+}) => {
+ */
